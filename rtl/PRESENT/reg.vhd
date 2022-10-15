@@ -3,12 +3,12 @@ use ieee.std_logic_1164.all;
 
 entity reg is
         generic(
-                KEY_LENGTH : NATURAL := 80
+                DATA_WIDTH : NATURAL := 80
         );
         port (
                 clk, rst : IN std_logic;
-                din : IN std_logic_vector(KEY_LENGTH-1 downto 0);
-                q : OUT std_logic_vector(KEY_LENGTH-1 downto 0)
+                din : IN std_logic_vector(DATA_WIDTH-1 downto 0);
+                q : OUT std_logic_vector(DATA_WIDTH-1 downto 0)
         ) ;
 end reg;
 
