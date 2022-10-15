@@ -8,7 +8,7 @@ entity reg is
         port (
                 clk, rst : IN std_logic;
                 din : IN std_logic_vector(DATA_WIDTH-1 downto 0);
-                q : OUT std_logic_vector(DATA_WIDTH-1 downto 0)
+                dout : OUT std_logic_vector(DATA_WIDTH-1 downto 0)
         ) ;
 end reg;
 
@@ -17,9 +17,9 @@ begin
         process(clk, rst) -- asynchronous active high reset
         begin
                 if rst then
-                        q <= (others => '0');
+                        dout <= (others => '0');
                 elsif rising_edge(clk) then
-                        q <= din;
+                        dout <= din;
                 end if;
         end process;
 end rtl ; 
