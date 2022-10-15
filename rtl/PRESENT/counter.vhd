@@ -16,7 +16,7 @@ architecture behavioral of counter is
 begin
         process (clk, rst) -- asynchronous reset
         begin
-                if rst then
+                if (rst = '1') then
                         count <= (count'low => '1', others => '0'); -- init to decimal 1
                 elsif rising_edge(clk) then
                         if ena then

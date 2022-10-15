@@ -16,7 +16,7 @@ architecture rtl of reg is
 begin
         process(clk, rst) -- asynchronous active high reset
         begin
-                if rst then
+                if rst = '1' then
                         dout <= (others => '0');
                 elsif rising_edge(clk) then
                         dout <= din;

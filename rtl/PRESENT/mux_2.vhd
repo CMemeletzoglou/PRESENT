@@ -15,7 +15,7 @@ begin
                 case sel is
                         when '0' => mux_2_out <= input_A;
                         when '1' => mux_2_out <= input_B;
-                        when others => mux_2_out <= (others => 'Z');
+                        when others => mux_2_out <= 'Z';
                 end case;
         end process;
 end behav; 
