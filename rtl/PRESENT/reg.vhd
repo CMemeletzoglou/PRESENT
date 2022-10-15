@@ -3,7 +3,7 @@ use ieee.std_logic_1164.all;
 
 entity reg is
         generic(
-                DATA_WIDTH : NATURAL := 80
+                DATA_WIDTH : NATURAL
         );
         port (
                 clk, rst : IN std_logic;
