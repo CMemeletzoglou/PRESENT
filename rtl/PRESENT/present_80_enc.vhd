@@ -6,7 +6,7 @@ entity present_80_enc is
                 KEY_SIZE : natural := 80 -- leaves this as a generic, not fixed on  80
         );
         port (
-                clk, rst, block_ena : in std_logic;
+                clk, rst, ena : in std_logic;
                 plaintext     : in std_logic_vector(63 downto 0);
                 key           : in std_logic_vector(KEY_SIZE - 1 downto 0);
                 ciphertext    : out std_logic_vector(63 downto 0);
@@ -15,9 +15,8 @@ entity present_80_enc is
 end present_80_enc;
 
 architecture rtl of present_80_enc is
-        signal  sel0,
-                sel1,
-                ciph_reg_enable : std_logic;
+        signal  mux_sel,
+                ciph_enable : std_logic;
 
         signal  current_round_num : std_logic_vector(4 downto 0);
 
@@ -35,8 +34,9 @@ architecture rtl of present_80_enc is
 
         constant BLOCK_SIZE : natural := 64;
 begin
-        sel0 <= rst AND '1';
-        sel1 <= rst AND '1';
+        -- control signal for the multiplexers controlling the input of
+        -- State and Key registers
+        mux_sel <= '1' when (current_round_num = "00000") else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -46,7 +46,7 @@ begin
                 port map(
                         input_A => pbox_layer_out,
                         input_B => plaintext,
-                        sel     => sel0,
+                        sel     => mux_sel,
                         mux_out => state_reg_mux_out
                 );
 
@@ -58,7 +58,7 @@ begin
                 port map(
                         input_A => key_schedule_out,
                         input_B => key,
-                        sel     => sel1,
+                        sel     => mux_sel,
                         mux_out => key_reg_mux_out
                 );
 
@@ -70,7 +70,7 @@ begin
                 port map(
                         clk  => clk,
                         rst  => rst,
-                        reg_ena  => block_ena,
+                        ena  => ena,
                         din  => state_reg_mux_out,
                         dout => state
                 );
@@ -83,7 +83,7 @@ begin
                 port map(
                         clk  => clk,
                         rst  => rst,
-                        reg_ena  => block_ena,
+                        ena  => ena,
                         din  => key_reg_mux_out,
                         dout => key_reg_out
                 );
@@ -101,8 +101,6 @@ begin
                         b => round_key,
                         y => sbox_layer_input
                 );
-
-        -- cyphertext <= sbox_layer_input;
 
         -- S-Box layer (16 S-Boxes in parallel), the *confusion* layer
         sbox_layer : entity work.sbox_layer
@@ -123,7 +121,6 @@ begin
                 port map(
                         clk   => clk,
                         rst   => rst,
-                        ena   => '1', -- change this, not good practice, maybe we don't need the ena signal at all                        
                         count => current_round_num
                 );
 
@@ -134,11 +131,7 @@ begin
                         round_counter => current_round_num,
                         output_key    => key_schedule_out
                 );
-                
-        with current_round_num select
-                        ciph_reg_enable <= '1' when "00000",
-                        '0' when others;
-
+      
         -- 64-bit ciphertext register
         ciph_reg : entity work.reg
                 generic map(
@@ -147,13 +140,29 @@ begin
                 port map(
                         clk  => clk,
                         rst  => rst,
-                        reg_ena  => ciph_reg_enable,
+                        ena  => ciph_enable,
                         din  => sbox_layer_input,
                         dout => ciphertext
                 );
+        
+        -- ciphertext register enable signal, must be activated when the
+        -- round_counter overflows to "00000". Since the output of the
+        -- round_counter is a signal, the value read from it is one cycle behind.
+        -- So the round_counter is found to be "00000", during the first round of
+        -- the next encryption cycle. So we need 31 cycle for the actual encryption
+        -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
+        with current_round_num select
+                ciph_enable <=  '1' when "00000",
+                                '0' when others;
 
         -- when round_counter overflows to "00000", we are finished
+        -- so raise the finished flag, indicating that the contents of
+        -- the ciphertext output are valid and correspond to the 
+        -- encrypted plaintext. Compare the round_counter to "00001" and not to
+        -- "00000" as in the select statement above, in order to give the ciphertext
+        -- register, the necessary cycle to pass the ciphertext from its input to its 
+        -- output
         with current_round_num select
-                finished_flag <= '1' when "00000",
-                'Z' when others;
+                finished_flag <= '1' when "00001",
+                '0' when others;
 end rtl;

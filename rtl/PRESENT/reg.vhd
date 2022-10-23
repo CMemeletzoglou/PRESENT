@@ -7,7 +7,7 @@ entity reg is
         );
         port (
                 clk, rst : in std_logic;
-                reg_ena : in std_logic;
+                ena      : in std_logic;
                 din      : in std_logic_vector(DATA_WIDTH - 1 downto 0);
                 dout     : out std_logic_vector(DATA_WIDTH - 1 downto 0)
         );
@@ -15,12 +15,12 @@ end reg;
 
 architecture rtl of reg is
 begin
-        process (clk, rst, reg_ena) -- asynchronous active high reset
+        process (clk, rst, ena) -- asynchronous active high reset
         begin
                 if (rst = '1') then
                         dout <= (others => '0');
                 elsif rising_edge(clk) then
-                        if (reg_ena = '1') then
+                        if (ena = '1') then
                                 dout <= din;
                         end if;
                 end if;
