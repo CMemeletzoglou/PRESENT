@@ -7,8 +7,8 @@ entity counter is
                 COUNTER_WIDTH : natural := 5
         );
         port (
-                clk, rst, ena : in std_logic;
-                count         : out std_logic_vector(COUNTER_WIDTH - 1 downto 0)
+                clk, rst : in std_logic;
+                count    : out std_logic_vector(COUNTER_WIDTH - 1 downto 0)
         );
 end counter;
 
@@ -22,9 +22,9 @@ begin
                         -- curr_count <= "00001";
                         curr_count <= "00000";
                 elsif rising_edge(clk) then
-                        if (ena = '1') then
-                                curr_count <= curr_count + 1;
-                        end if;
+                        -- if (ena = '1') then
+                        curr_count <= curr_count + 1;
+                        -- end if;
                 end if;
         end process;
 
