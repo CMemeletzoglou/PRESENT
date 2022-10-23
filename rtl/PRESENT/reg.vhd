@@ -2,24 +2,27 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity reg is
-        generic(
-                DATA_WIDTH : NATURAL
+        generic (
+                DATA_WIDTH : natural
         );
         port (
-                clk, rst : IN std_logic;
-                din : IN std_logic_vector(DATA_WIDTH-1 downto 0);
-                dout : OUT std_logic_vector(DATA_WIDTH-1 downto 0)
-        ) ;
+                clk, rst : in std_logic;
+                reg_ena : in std_logic;
+                din      : in std_logic_vector(DATA_WIDTH - 1 downto 0);
+                dout     : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+        );
 end reg;
 
 architecture rtl of reg is
 begin
-        process(clk, rst) -- asynchronous active high reset
+        process (clk, rst, reg_ena) -- asynchronous active high reset
         begin
-                if rst = '1' then
+                if (rst = '1') then
                         dout <= (others => '0');
                 elsif rising_edge(clk) then
-                        dout <= din;
+                        if (reg_ena = '1') then
+                                dout <= din;
+                        end if;
                 end if;
         end process;
-end rtl ; 
+end rtl;

@@ -2,13 +2,13 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity xor_2 is
-	port (
-		a, b : IN std_logic;
-		y : OUT std_logic
-	) ;
+        port (
+                a, b : in std_logic;
+                y    : out std_logic
+        );
 end xor_2;
 
 architecture boolean_eq of xor_2 is
 begin
-	y <= a XOR b;
-end boolean_eq ; 
+        y <= a xor b;
+end boolean_eq;
