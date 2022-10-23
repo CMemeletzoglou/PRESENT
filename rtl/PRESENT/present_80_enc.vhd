@@ -14,7 +14,7 @@ entity present_80_enc is
         );
 end present_80_enc;
 
-architecture rtl of present_80_enc is
+architecture structural of present_80_enc is
         signal  mux_sel,
                 ciph_enable : std_logic;
 
@@ -165,4 +165,4 @@ begin
         with current_round_num select
                 finished_flag <= '1' when "00001",
                 '0' when others;
-end rtl;
+end structural;
