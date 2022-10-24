@@ -1,20 +1,20 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity present_80_enc is
-        generic (
-                KEY_SIZE : natural := 80 -- leaves this as a generic, not fixed on  80
-        );
+library work;
+use work.key_length_pack.all;
+
+entity present_enc is      
         port (
                 clk, rst, ena : in std_logic;
                 plaintext     : in std_logic_vector(63 downto 0);
-                key           : in std_logic_vector(KEY_SIZE - 1 downto 0);
+                key           : in std_logic_vector(KEY_LENGTH - 1 downto 0);
                 ciphertext    : out std_logic_vector(63 downto 0);
                 finished_flag : out std_logic
         );
-end present_80_enc;
+end present_enc;
 
-architecture structural of present_80_enc is
+architecture structural of present_enc is
         signal  mux_sel,
                 ciph_enable : std_logic;
 
@@ -50,10 +50,10 @@ begin
                         mux_out => state_reg_mux_out
                 );
 
-        -- 80-bit mux which drives the key register
+        -- 80-bit/128-bit mux which drives the key register
         key_reg_mux : entity work.mux
                 generic map(
-                        DATA_WIDTH => KEY_SIZE
+                        DATA_WIDTH => KEY_LENGTH
                 )
                 port map(
                         input_A => key_schedule_out,
@@ -75,10 +75,10 @@ begin
                         dout => state
                 );
 
-        -- 80-bit key register, at each round it stores the current subkey
+        -- 80-bit/128-bit key register, at each round it stores the current subkey
         key_reg : entity work.reg
                 generic map(
-                        DATA_WIDTH => KEY_SIZE
+                        DATA_WIDTH => KEY_LENGTH
                 )
                 port map(
                         clk  => clk,
@@ -89,7 +89,7 @@ begin
                 );
 
         -- current round key, it consists of the 64 leftmost bits of the key register
-        round_key <= key_reg_out(79 downto 16);
+        round_key <= key_reg_out(KEY_LENGTH-1 downto KEY_LENGTH-64);
 
         -- 64-bit xor to add current round key to state
         xor_64 : entity work.xor_n
