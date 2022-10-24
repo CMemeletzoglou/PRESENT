@@ -4,13 +4,13 @@ use ieee.std_logic_1164.all;
 library work;
 use work.key_length_pack.all;
 
-entity present_enc is      
+entity present_enc is
         port (
                 clk, rst, ena : in std_logic;
                 plaintext     : in std_logic_vector(63 downto 0);
                 key           : in std_logic_vector(KEY_LENGTH - 1 downto 0);
                 ciphertext    : out std_logic_vector(63 downto 0);
-                finished_flag : out std_logic
+                ready         : out std_logic
         );
 end present_enc;
 
@@ -30,7 +30,7 @@ architecture structural of present_enc is
 
         signal  key_reg_out,
                 key_reg_mux_out,
-                key_schedule_out : std_logic_vector(KEY_LENGTH-1 downto 0);
+                key_schedule_out : std_logic_vector(KEY_LENGTH - 1 downto 0);
 
         constant BLOCK_SIZE : natural := 64;
 begin
@@ -89,7 +89,7 @@ begin
                 );
 
         -- current round key, it consists of the 64 leftmost bits of the key register
-        round_key <= key_reg_out(KEY_LENGTH-1 downto KEY_LENGTH-64);
+        round_key <= key_reg_out(KEY_LENGTH - 1 downto KEY_LENGTH - 64);
 
         -- 64-bit xor to add current round key to state
         xor_64 : entity work.xor_n
@@ -131,7 +131,7 @@ begin
                         round_counter => current_round_num,
                         output_key    => key_schedule_out
                 );
-      
+
         -- 64-bit ciphertext register
         ciph_reg : entity work.reg
                 generic map(
@@ -144,7 +144,7 @@ begin
                         din  => sbox_layer_input,
                         dout => ciphertext
                 );
-        
+
         -- ciphertext register enable signal, must be activated when the
         -- round_counter overflows to "00000". Since the output of the
         -- round_counter is a signal, the value read from it is one cycle behind.
@@ -163,6 +163,8 @@ begin
         -- register, the necessary cycle to pass the ciphertext from its input to its 
         -- output
         with current_round_num select
-                finished_flag <= '1' when "00001",
-                '0' when others;
+                ready <= '1' when "00001",
+                         '0' when others;
+        -- small issue though.. the ready flag is also raised during the first encryption
+        -- process' second cycle (counter = 000001)
 end structural;

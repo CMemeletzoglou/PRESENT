@@ -22,6 +22,8 @@ begin
                 elsif rising_edge(clk) then
                         if (ena = '1') then
                                 dout <= din;
+                        -- else
+                                -- dout <= ((others => 'Z'));
                         end if;
                 end if;
         end process;
