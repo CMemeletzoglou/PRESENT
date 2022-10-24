@@ -18,7 +18,7 @@ architecture bench of present_enc_tb is
                         plaintext     : in std_logic_vector(63 downto 0);
                         key           : in std_logic_vector(KEY_LENGTH - 1 downto 0);
                         ciphertext    : out std_logic_vector(63 downto 0);
-                        finished_flag : out std_logic
+                        ready : out std_logic
                 );
         end component;
 
@@ -33,7 +33,7 @@ architecture bench of present_enc_tb is
         signal plaintext     : std_logic_vector(63 downto 0);
         signal key           : std_logic_vector(KEY_LENGTH - 1 downto 0);
         signal ciphertext    : std_logic_vector(63 downto 0);
-        signal finished_flag : std_logic;
+        signal ready : std_logic;
 
 begin
         present_enc_inst : present_enc
@@ -44,7 +44,7 @@ begin
                 plaintext     => plaintext,
                 key           => key,
                 ciphertext    => ciphertext,
-                finished_flag => finished_flag
+                ready => ready
         );
 
         clk_process : process
