@@ -112,8 +112,8 @@ begin
         -- P-Box layer, the *diffusion* layer
         pbox_layer : entity work.pbox
                 port map(
-                        pbox_in  => pbox_layer_input,
-                        pbox_out => pbox_layer_out
+                        data_in  => pbox_layer_input,
+                        data_out => pbox_layer_out
                 );
 
         -- round counter, incremented by 1 at each network round
