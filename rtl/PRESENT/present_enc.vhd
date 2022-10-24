@@ -30,7 +30,7 @@ architecture structural of present_enc is
 
         signal  key_reg_out,
                 key_reg_mux_out,
-                key_schedule_out : std_logic_vector(79 downto 0);
+                key_schedule_out : std_logic_vector(KEY_LENGTH-1 downto 0);
 
         constant BLOCK_SIZE : natural := 64;
 begin

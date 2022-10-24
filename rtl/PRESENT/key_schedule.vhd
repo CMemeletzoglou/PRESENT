@@ -51,7 +51,7 @@ begin
                                 data_out => output_key(123 downto 120)
                         );
                 
-                output_key(66 downto 62) <= shifted_vec(66 downto 60) xor round_counter;
+                output_key(66 downto 62) <= shifted_vec(66 downto 62) xor round_counter;
                 output_key(119 downto 67) <= shifted_vec(119 downto 67);
                 output_key(61 downto 0) <= shifted_vec(61 downto 0);
         end generate KEY_128_BIT;
