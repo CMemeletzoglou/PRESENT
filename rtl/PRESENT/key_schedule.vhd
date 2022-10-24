@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 library work;
 use work.key_length_pack.all;
 
-entity key_schedule is         
+entity key_schedule is  
         port (
                 input_key     : in std_logic_vector(KEY_LENGTH - 1 downto 0);
                 round_counter : in std_logic_vector(4 downto 0);
