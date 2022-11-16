@@ -4,17 +4,17 @@ use ieee.std_logic_1164.all;
 library work;
 use work.key_length_pack.all;
 
-entity present_enc is
+entity present_dec is
         port (
                 clk, rst, ena : in std_logic;
-                plaintext     : in std_logic_vector(63 downto 0);
+                ciphertext    : in std_logic_vector(63 downto 0);
                 key           : in std_logic_vector(KEY_LENGTH - 1 downto 0);
-                ciphertext    : out std_logic_vector(63 downto 0);
+                plaintext     : out std_logic_vector(63 downto 0);
                 ready         : out std_logic
         );
-end present_enc;
+end present_dec;
 
-architecture structural of present_enc is
+architecture structural of present_dec is
         signal  mux_sel,
                 ciph_enable : std_logic;
 
@@ -23,9 +23,9 @@ architecture structural of present_enc is
         signal  state_reg_mux_out,
                 state : std_logic_vector(63 downto 0);
 
-        signal  sbox_layer_input,
-                pbox_layer_input,
-                pbox_layer_out,
+        signal  inv_pbox_layer_input,
+                inv_sbox_layer_input,
+                inv_sbox_layer_out,
                 round_key : std_logic_vector(63 downto 0);
 
         signal  key_reg_out,
@@ -44,8 +44,8 @@ begin
                         DATA_WIDTH => BLOCK_SIZE
                 )
                 port map(
-                        input_A => pbox_layer_out,
-                        input_B => plaintext,
+                        input_A => inv_sbox_layer_out,
+                        input_B => ciphertext,
                         sel     => mux_sel,
                         mux_out => state_reg_mux_out
                 );
@@ -99,37 +99,37 @@ begin
                 port map(
                         a => state,
                         b => round_key,
-                        y => sbox_layer_input
+                        y => inv_pbox_layer_input
                 );
 
-        -- S-Box layer (16 S-Boxes in parallel), the *confusion* layer
-        sbox_layer : entity work.sbox_layer
+        -- Inverse P-Box layer, the *diffusion* removal layer
+        inv_pbox_layer : entity work.inv_pbox
                 port map(
-                        sbox_layer_in  => sbox_layer_input,
-                        sbox_layer_out => pbox_layer_input
+                        data_in  => inv_pbox_layer_input,
+                        data_out => inv_sbox_layer_input
                 );
 
-        -- P-Box layer, the *diffusion* layer
-        pbox_layer : entity work.pbox
+        -- Inverse S-Box layer (16 inv S-Boxes in parallel), the *confusion* removal layer
+        inv_sbox_layer : entity work.inv_sbox_layer
                 port map(
-                        data_in  => pbox_layer_input,
-                        data_out => pbox_layer_out
+                        inv_sbox_layer_in  => inv_sbox_layer_input,
+                        inv_sbox_layer_out => inv_sbox_layer_out
                 );
 
         -- round counter, incremented by 1 at each network round
         round_counter : entity work.counter
-                generic map(
+                generic map (
                         COUNTER_WIDTH => 5
                 )
                 port map(
                         clk   => clk,
                         rst   => rst,
-                        updown => '0',
+                        updown => '1', -- count downwards
                         count => current_round_num
                 );
 
         -- key schedule module, produces the new contents of the key register
-        key_schedule : entity work.key_schedule
+        inv_key_schedule : entity work.inv_key_schedule
                 port map(
                         input_key     => key_reg_out,
                         round_counter => current_round_num,
@@ -145,8 +145,8 @@ begin
                         clk  => clk,
                         rst  => rst,
                         ena  => ciph_enable,
-                        din  => sbox_layer_input,
-                        dout => ciphertext
+                        din  => inv_pbox_layer_input,
+                        dout => plaintext
                 );
 
         -- ciphertext register enable signal, must be activated when the
@@ -156,8 +156,8 @@ begin
         -- the next encryption cycle. So we need 31 cycle for the actual encryption
         -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
         with current_round_num select
-                ciph_enable <=  '1' when "00000",
-                                '0' when others;
+                ciph_enable <= '1' when "00001",
+                '0' when others;
 
         -- when round_counter overflows to "00000", we are finished
         -- so raise the finished flag, indicating that the contents of
@@ -168,7 +168,7 @@ begin
         -- output
         with current_round_num select
                 ready <= '1' when "00001",
-                         '0' when others;
+                '0' when others;
         -- small issue though.. the ready flag is also raised during the first encryption
         -- process' second cycle (counter = 000001)
 end structural;
