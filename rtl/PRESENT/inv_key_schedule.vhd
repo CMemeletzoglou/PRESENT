@@ -19,7 +19,7 @@ begin
         --      Instead of using ROR on a std_logic_vector, which requires VHDL-2008 support
         --      perform the circular shift/rotation using bit slicing and concatenation
         
-        -- 80-bit key
+        -- Inverse 80-bit key schedule
         KEY_80_BIT : if (KEY_LENGTH = 80) generate
                 -- inverse key schedule, so first xor the round_counter
                 tmp(19 downto 15) <= input_key(19 downto 15) xor round_counter;
@@ -41,28 +41,27 @@ begin
                 output_key <= shifted_vec;
         end generate KEY_80_BIT;
 
-        -- **********************************************
-        -- TODO : Inverse 128-bit key schedule
-        -- **********************************************
-        
-        -- -- 128-bit key
-        -- KEY_128_BIT : if (KEY_LENGTH = 128) generate
-        --         shifted_vec <= input_key(66 downto 0) & input_key(127 downto 67);
+        -- Inverse 80-bit key schedule
+        KEY_128_BIT : if (KEY_LENGTH = 128) generate
+                tmp(66 downto 62) <= input_key(66 downto 62) xor round_counter;
 
-        --         sbox_1 : entity work.sbox
-        --                 port map(
-        --                         data_in => shifted_vec(127 downto 124),
-        --                         data_out => output_key(127 downto 124)
-        --                 );
+                inv_sbox_1 : entity work.inv_sbox
+                        port map(
+                                data_in => input_key(127 downto 124),
+                                data_out => tmp(127 downto 124)
+                        );
                 
-        --         sbox_2 : entity work.sbox
-        --                 port map(
-        --                         data_in => shifted_vec(123 downto 120),
-        --                         data_out => output_key(123 downto 120)
-        --                 );
+                inv_sbox_2 : entity work.inv_sbox
+                        port map(
+                                data_in => input_key(123 downto 120),
+                                data_out => tmp(123 downto 120)
+                        );
                 
-        --         output_key(66 downto 62) <= shifted_vec(66 downto 62) xor round_counter;
-        --         output_key(119 downto 67) <= shifted_vec(119 downto 67);
-        --         output_key(61 downto 0) <= shifted_vec(61 downto 0);
-        -- end generate KEY_128_BIT;
+                tmp(119 downto 67) <= input_key(119 downto 67);
+                tmp(61 downto 0) <= input_key(61 downto 0);
+
+                shifted_vec <= tmp(60 downto 0) & tmp(127 downto 61);
+
+                output_key <= shifted_vec;
+        end generate KEY_128_BIT;
 end structural;
