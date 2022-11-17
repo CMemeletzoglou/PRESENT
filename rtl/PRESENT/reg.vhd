@@ -6,10 +6,11 @@ entity reg is
                 DATA_WIDTH : natural
         );
         port (
-                clk, rst : in std_logic;
-                ena      : in std_logic;
-                din      : in std_logic_vector(DATA_WIDTH - 1 downto 0);
-                dout     : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+                clk  : in std_logic;
+                rst  : in std_logic;
+                ena  : in std_logic;
+                din  : in std_logic_vector(DATA_WIDTH - 1 downto 0);
+                dout : out std_logic_vector(DATA_WIDTH - 1 downto 0)
         );
 end reg;
 
@@ -22,7 +23,7 @@ begin
                 elsif rising_edge(clk) then
                         if (ena = '1') then
                                 dout <= din;
-                        -- else
+                                -- else
                                 -- dout <= ((others => 'Z'));
                         end if;
                 end if;

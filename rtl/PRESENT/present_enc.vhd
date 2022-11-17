@@ -6,11 +6,13 @@ use work.key_length_pack.all;
 
 entity present_enc is
         port (
-                clk, rst, ena : in std_logic;
-                plaintext     : in std_logic_vector(63 downto 0);
-                key           : in std_logic_vector(KEY_LENGTH - 1 downto 0);
-                ciphertext    : out std_logic_vector(63 downto 0);
-                ready         : out std_logic
+                clk        : in std_logic;
+                rst        : in std_logic;
+                ena        : in std_logic;
+                plaintext  : in std_logic_vector(63 downto 0);
+                key        : in std_logic_vector(KEY_LENGTH - 1 downto 0);
+                ciphertext : out std_logic_vector(63 downto 0);
+                ready      : out std_logic
         );
 end present_enc;
 
@@ -122,10 +124,10 @@ begin
                         COUNTER_WIDTH => 5
                 )
                 port map(
-                        clk   => clk,
-                        rst   => rst,
+                        clk    => clk,
+                        rst    => rst,
                         updown => '0',
-                        count => current_round_num
+                        count  => current_round_num
                 );
 
         -- key schedule module, produces the new contents of the key register
@@ -156,8 +158,8 @@ begin
         -- the next encryption cycle. So we need 31 cycles for the actual encryption
         -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
         with current_round_num select
-                ciph_enable <=  '1' when "00000",
-                                '0' when others;
+                ciph_enable <= '1' when "00000",
+                '0' when others;
 
         -- when round_counter overflows to "00000", we are finished
         -- so raise the finished flag, indicating that the contents of
@@ -168,7 +170,7 @@ begin
         -- output
         with current_round_num select
                 ready <= '1' when "00001",
-                         '0' when others;
+                '0' when others;
         -- small issue though.. the ready flag is also raised during the first encryption
         -- process' second cycle (counter = 000001)
 end structural;

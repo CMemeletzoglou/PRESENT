@@ -3,9 +3,10 @@ use ieee.std_logic_1164.all;
 
 entity mux_2 is
         port (
-                input_A, input_B : in std_logic;
-                sel              : in std_logic;
-                mux_2_out        : out std_logic
+                input_A   : in std_logic;
+                input_B   : in std_logic;
+                sel       : in std_logic;
+                mux_2_out : out std_logic
         );
 end mux_2;
 

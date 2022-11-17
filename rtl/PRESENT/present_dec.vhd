@@ -6,11 +6,13 @@ use work.key_length_pack.all;
 
 entity present_dec is
         port (
-                clk, rst, ena : in std_logic;
-                ciphertext    : in std_logic_vector(63 downto 0);
-                key           : in std_logic_vector(KEY_LENGTH - 1 downto 0);
-                plaintext     : out std_logic_vector(63 downto 0);
-                ready         : out std_logic
+                clk        : in std_logic;
+                rst        : in std_logic;
+                ena        : in std_logic;
+                ciphertext : in std_logic_vector(63 downto 0);
+                key        : in std_logic_vector(KEY_LENGTH - 1 downto 0);
+                plaintext  : out std_logic_vector(63 downto 0);
+                ready      : out std_logic
         );
 end present_dec;
 
@@ -118,14 +120,14 @@ begin
 
         -- round counter, incremented by 1 at each network round
         round_counter : entity work.counter
-                generic map (
+                generic map(
                         COUNTER_WIDTH => 5
                 )
                 port map(
-                        clk   => clk,
-                        rst   => rst,
+                        clk    => clk,
+                        rst    => rst,
                         updown => '1', -- count downwards
-                        count => current_round_num
+                        count  => current_round_num
                 );
 
         -- key schedule module, produces the new contents of the key register

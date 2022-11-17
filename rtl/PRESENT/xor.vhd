@@ -6,8 +6,9 @@ entity xor_n is
                 DATA_WIDTH : natural
         );
         port (
-                a, b : in std_logic_vector(DATA_WIDTH - 1 downto 0);
-                y    : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+                a : in std_logic_vector(DATA_WIDTH - 1 downto 0);
+                b : in std_logic_vector(DATA_WIDTH - 1 downto 0);
+                y : out std_logic_vector(DATA_WIDTH - 1 downto 0)
         );
 end xor_n;
 

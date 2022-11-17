@@ -6,9 +6,10 @@ entity mux is
                 DATA_WIDTH : natural
         );
         port (
-                input_A, input_B : in std_logic_vector(DATA_WIDTH - 1 downto 0);
-                sel              : in std_logic;
-                mux_out          : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+                input_A : in std_logic_vector(DATA_WIDTH - 1 downto 0);
+                input_B : in std_logic_vector(DATA_WIDTH - 1 downto 0);
+                sel     : in std_logic;
+                mux_out : out std_logic_vector(DATA_WIDTH - 1 downto 0)
         );
 end mux;
 

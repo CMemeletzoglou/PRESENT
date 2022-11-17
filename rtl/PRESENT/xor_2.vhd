@@ -3,8 +3,9 @@ use ieee.std_logic_1164.all;
 
 entity xor_2 is
         port (
-                a, b : in std_logic;
-                y    : out std_logic
+                a : in std_logic;
+                b : in std_logic;
+                y : out std_logic
         );
 end xor_2;
 
