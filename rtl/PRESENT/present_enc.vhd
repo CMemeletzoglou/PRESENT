@@ -153,7 +153,7 @@ begin
         -- round_counter overflows to "00000". Since the output of the
         -- round_counter is a signal, the value read from it is one cycle behind.
         -- So the round_counter is found to be "00000", during the first round of
-        -- the next encryption cycle. So we need 31 cycle for the actual encryption
+        -- the next encryption cycle. So we need 31 cycles for the actual encryption
         -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
         with current_round_num select
                 ciph_enable <=  '1' when "00000",

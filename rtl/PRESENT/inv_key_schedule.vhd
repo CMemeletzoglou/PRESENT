@@ -14,7 +14,7 @@ entity inv_key_schedule is
 end inv_key_schedule;
 
 architecture structural of inv_key_schedule is
-        signal shifted_vec : std_logic_vector(KEY_LENGTH - 1 downto 0);
+        signal shifted_vec, tmp : std_logic_vector(KEY_LENGTH - 1 downto 0);
 begin
         --      Instead of using ROR on a std_logic_vector, which requires VHDL-2008 support
         --      perform the circular shift/rotation using bit slicing and concatenation
@@ -22,23 +22,23 @@ begin
         -- 80-bit key
         KEY_80_BIT : if (KEY_LENGTH = 80) generate
                 -- inverse key schedule, so first xor the round_counter
-                shifted_vec(19 downto 15) <= input_key(19 downto 15) xor round_counter;
+                tmp(19 downto 15) <= input_key(19 downto 15) xor round_counter;
 
                 -- then pass bits 79:76 through the inverse S-Box
                 inv_sbox : entity work.inv_sbox
                         port map(
                                 data_in  => input_key(79 downto 76),
-                                data_out => shifted_vec(79 downto 76)
+                                data_out => tmp(79 downto 76)
                         );
 
                 -- emplace the unaffected bits into the resulting vector
-                shifted_vec(75 downto 20) <= input_key(75 downto 20);
-                shifted_vec(14 downto 0)  <= input_key(14 downto 0);
+                tmp(75 downto 20) <= input_key(75 downto 20);
+                tmp(14 downto 0)  <= input_key(14 downto 0);
 
                 -- Circular right shift  ROR 61
-                shifted_vec <= shifted_vec(60 downto 0) & shifted_vec(79 downto 61);
-                
-                
+                shifted_vec <= tmp(60 downto 0) & tmp(79 downto 61);
+
+                output_key <= shifted_vec;
         end generate KEY_80_BIT;
 
         -- **********************************************

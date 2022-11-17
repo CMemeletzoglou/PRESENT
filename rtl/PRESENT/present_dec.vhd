@@ -16,7 +16,7 @@ end present_dec;
 
 architecture structural of present_dec is
         signal  mux_sel,
-                ciph_enable : std_logic;
+                plain_enable : std_logic;
 
         signal  current_round_num : std_logic_vector(4 downto 0);
 
@@ -136,38 +136,38 @@ begin
                         output_key    => key_schedule_out
                 );
 
-        -- 64-bit ciphertext register
-        ciph_reg : entity work.reg
+        -- 64-bit plaintext register
+        plain_reg : entity work.reg
                 generic map(
                         DATA_WIDTH => BLOCK_SIZE
                 )
                 port map(
                         clk  => clk,
                         rst  => rst,
-                        ena  => ciph_enable,
+                        ena  => plain_enable,
                         din  => inv_pbox_layer_input,
                         dout => plaintext
                 );
 
-        -- ciphertext register enable signal, must be activated when the
+        -- plaintext register enable signal, must be activated when the
         -- round_counter overflows to "00000". Since the output of the
         -- round_counter is a signal, the value read from it is one cycle behind.
         -- So the round_counter is found to be "00000", during the first round of
-        -- the next encryption cycle. So we need 31 cycle for the actual encryption
-        -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
+        -- the next decryption cycle. So we need 31 cycles for the actual decryption
+        -- + 1 cycle to get the decrypted plaintext on the plaintext output bus
         with current_round_num select
-                ciph_enable <= '1' when "00001",
+                plain_enable <= '1' when "00000",
                 '0' when others;
 
-        -- when round_counter overflows to "00000", we are finished
+        -- when round_counter overflows to "11111", we are finished
         -- so raise the finished flag, indicating that the contents of
-        -- the ciphertext output are valid and correspond to the 
-        -- encrypted plaintext. Compare the round_counter to "00001" and not to
+        -- the plaintext output are valid and correspond to the 
+        -- decrypted plaintext. Compare the round_counter to "00001" and not to
         -- "00000" as in the select statement above, in order to give the ciphertext
         -- register, the necessary cycle to pass the ciphertext from its input to its 
         -- output
         with current_round_num select
-                ready <= '1' when "00001",
+                ready <= '1' when "11111",
                 '0' when others;
         -- small issue though.. the ready flag is also raised during the first encryption
         -- process' second cycle (counter = 000001)
