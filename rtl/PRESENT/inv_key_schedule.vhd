@@ -41,7 +41,7 @@ begin
                 output_key <= shifted_vec;
         end generate KEY_80_BIT;
 
-        -- Inverse 80-bit key schedule
+        -- Inverse 128-bit key schedule
         KEY_128_BIT : if (KEY_LENGTH = 128) generate
                 tmp(66 downto 62) <= input_key(66 downto 62) xor round_counter;
 
