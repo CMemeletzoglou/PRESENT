@@ -17,24 +17,24 @@ entity present_enc is
 end present_enc;
 
 architecture structural of present_enc is
+        constant BLOCK_SIZE : natural := 64;
+
         signal  mux_sel,
-                ciph_enable : std_logic;
+                ciph_enable       : std_logic;
 
         signal  current_round_num : std_logic_vector(4 downto 0);
 
         signal  state_reg_mux_out,
-                state : std_logic_vector(63 downto 0);
+                state : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 
         signal  sbox_layer_input,
                 pbox_layer_input,
                 pbox_layer_out,
-                round_key : std_logic_vector(63 downto 0);
+                round_key        : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 
         signal  key_reg_out,
                 key_reg_mux_out,
                 key_schedule_out : std_logic_vector(KEY_LENGTH - 1 downto 0);
-
-        constant BLOCK_SIZE : natural := 64;
 begin
         -- control signal for the multiplexers controlling the input of
         -- State and Key registers
@@ -170,7 +170,8 @@ begin
         -- output
         with current_round_num select
                 ready <= '1' when "00001",
-                '0' when others;
+                '0' when others;       
+        
         -- small issue though.. the ready flag is also raised during the first encryption
         -- process' second cycle (counter = 000001)
 end structural;
