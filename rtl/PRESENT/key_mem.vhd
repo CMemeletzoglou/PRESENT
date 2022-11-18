@@ -16,7 +16,7 @@ entity key_mem is
 end entity key_mem;
 
 architecture rtl of key_mem is
-        type ROUND_KEY_T is array(KEY_LENGTH - 1 downto 0) of std_logic;
+        type ROUND_KEY_T is array(63 downto 0) of std_logic;
 
         type ROUND_KEY_MEM is array (0 to 31) of ROUND_KEY_T;
 
