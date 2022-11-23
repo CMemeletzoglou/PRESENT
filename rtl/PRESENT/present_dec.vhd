@@ -171,6 +171,6 @@ begin
         with current_round_num select
                 ready <= '1' when "11111",
                 '0' when others;
-        -- small issue though.. the ready flag is also raised during the first encryption
+        -- small issue though.. the ready flag is also raised during the first decryption
         -- process' second cycle (counter = 000001)
 end structural;
