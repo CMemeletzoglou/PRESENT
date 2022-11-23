@@ -30,5 +30,13 @@ begin
         tmp(14 downto 0)  <= shifted_vec(14 downto 0);
 
         -- new
-        output_key <= tmp when (ena = '1') else (others => 'Z');
+        tri_buf : entity work.tristate_buffer
+                generic map(
+                        NUM_BITS => 80
+                )
+                port map(
+                        inp => tmp,
+                        ena => ena,
+                        outp => output_key
+                );
 end architecture;
