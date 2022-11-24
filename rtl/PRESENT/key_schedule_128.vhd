@@ -12,10 +12,8 @@ entity key_schedule_128 is
 end entity;
 
 architecture structural of key_schedule_128 is
-        signal shifted_vec : std_logic_vector(127 downto 0);
-
-        -- new
-        signal tmp : std_logic_vector(127 downto 0);
+        signal  shifted_vec,
+                tmp : std_logic_vector(127 downto 0);
 begin
         shifted_vec <= input_key(66 downto 0) & input_key(127 downto 67);
 
@@ -35,14 +33,13 @@ begin
         tmp(119 downto 67) <= shifted_vec(119 downto 67);
         tmp(61 downto 0)   <= shifted_vec(61 downto 0);
 
-        -- new
         tri_buf : entity work.tristate_buffer
                 generic map(
                         NUM_BITS => 128
                 )
                 port map(
-                        inp => tmp,
-                        ena => ena,
+                        inp  => tmp,
+                        ena  => ena,
                         outp => output_key
                 );
 end architecture;
