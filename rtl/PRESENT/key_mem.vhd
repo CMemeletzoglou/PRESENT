@@ -34,23 +34,29 @@ begin
         port_A : process (clk)
         begin
                 if rising_edge(clk) then
-                        if (wr_en_a = '1') then --write operation
+                        if (wr_en_a = '1') then -- Port A write operation
                                 ram_block(to_integer(unsigned(addr_a))) <= data_in_a;
-                        elsif (wr_en_a = '0') then -- read operation
+                        elsif (wr_en_a = '0') then -- Port A read operation
                                 data_out_a <= ram_block(to_integer(unsigned(addr_a)));
+                        end if;
+
+                        if (wr_en_b = '1') then -- Port B write operation
+                                ram_block(to_integer(unsigned(addr_b))) <= data_in_b;
+                        elsif (wr_en_b = '0') then
+                                data_out_b <= ram_block(to_integer(unsigned(addr_b)));
                         end if;
                 end if;
         end process  port_A;
 
-        -- port B
-        port_B : process (clk)
-        begin
-                if rising_edge(clk) then
-                        if (wr_en_b = '1') then --write operation
-                                ram_block(to_integer(unsigned(addr_b))) <= data_in_b;
-                        elsif (wr_en_b = '0') then -- read operation
-                                data_out_b <= ram_block(to_integer(unsigned(addr_b)));
-                        end if;
-                end if;
-        end process port_B;        
+--        -- port B
+--        port_B : process (clk)
+--        begin
+--                if rising_edge(clk) then
+--                        if (wr_en_b = '1') then --write operation
+--                                ram_block(to_integer(unsigned(addr_b))) <= data_in_b;
+--                        elsif (wr_en_b = '0') then -- read operation
+--                                data_out_b <= ram_block(to_integer(unsigned(addr_b)));
+--                        end if;
+--                end if;
+--        end process port_B;        
 end architecture;
