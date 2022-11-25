@@ -23,7 +23,7 @@ architecture structural of key_schedule_80 is
 begin
         mux_sel <= '1' when (round_counter = "00001") else '0';
 
-        key_mux : entity work.mux
+        key_sched_input_mux : entity work.mux
                 generic map (
                         DATA_WIDTH => 80
                 )

@@ -4,18 +4,37 @@ use ieee.numeric_std.all;
 
 entity key_schedule_128 is
         port (
+                clk           : in std_logic;
+                rst          : in std_logic;
+                ena           : in std_logic;
                 input_key     : in std_logic_vector(127 downto 0);
                 round_counter : in std_logic_vector(4 downto 0);
-                ena           : in std_logic;
                 output_key    : out std_logic_vector(127 downto 0)
         );
 end entity;
 
 architecture structural of key_schedule_128 is
+        signal mux_sel : std_logic;
+        
         signal  shifted_vec,
-                tmp : std_logic_vector(127 downto 0);
+                tmp,
+                reg_out,
+                mux_out : std_logic_vector(127 downto 0);
 begin
-        shifted_vec <= input_key(66 downto 0) & input_key(127 downto 67);
+        mux_sel <= '1' when (round_counter = "00001") else '0';
+
+        key_sched_input_mux : entity work.mux
+                generic map (
+                        DATA_WIDTH => 128
+                )
+                port map (
+                        input_A => reg_out,
+                        input_B => input_key,
+                        sel => mux_sel,
+                        mux_out => mux_out
+                );
+
+        shifted_vec <= mux_out(66 downto 0) & mux_out(127 downto 67);
 
         sbox_1 : entity work.sbox
                 port map(
@@ -33,13 +52,27 @@ begin
         tmp(119 downto 67) <= shifted_vec(119 downto 67);
         tmp(61 downto 0)   <= shifted_vec(61 downto 0);
 
-        tri_buf : entity work.tristate_buffer
-                generic map(
-                        NUM_BITS => 128
+        output_reg : entity work.reg
+                generic map (
+                        DATA_WIDTH => 128
                 )
-                port map(
-                        inp  => tmp,
-                        ena  => ena,
-                        outp => output_key
+                port map (
+                        clk => clk,
+                        rst => rst,
+                        ena => ena,
+                        din => tmp,
+                        dout => reg_out
                 );
+
+        output_key <= reg_out;
+
+        -- tri_buf : entity work.tristate_buffer
+        --         generic map(
+        --                 NUM_BITS => 128
+        --         )
+        --         port map(
+        --                 inp  => tmp,
+        --                 ena  => ena,
+        --                 outp => output_key
+        --         );
 end architecture;
