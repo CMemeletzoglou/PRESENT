@@ -31,7 +31,6 @@ architecture structural of key_schedule_top is
         -- signal  key_out : std_logic_vector(127 downto 0);
 begin
         ena_80bit  <= '1' when (mode = '0' and ena = '1') else '0';
-        -- ena_128bit <= not ena_80bit when (ena = '1') else '0';
         ena_128bit <= '0' XOR (NOT ena_80bit AND ena);
 
         round_counter : entity work.counter
@@ -64,21 +63,6 @@ begin
                         round_counter => current_round_num,
                         output_key    => key_sched_128_out
                 );
-
-        -- output_key_mux : entity work.mux
-        --         generic map (
-        --                 DATA_WIDTH => 128
-        --         )
-        --         port map (
-        --                 input_A => "000000000000000000000000000000000000000000000000" & key_sched_80_out,
-        --                 input_B => key_sched_128_out,
-        --                 sel => mode,
-        --                 mux_out => key_out
-        --         );
-
-        -- output_key <= key_out()
-
-
 
         key_sched_80_tri_buf : entity work.tristate_buffer
                 generic map(
@@ -120,11 +104,4 @@ begin
                         ena => (ena_80bit OR ena_128bit),
                         outp => output_key
                 );
-
-
-
-
-        -- key_out <= "000000000000000000000000000000000000000000000000" & key_sched_80_out when (ena_80bit = '1')
-        --         else key_sched_128_out when (ena_128bit = '1')
-        --         else (others => 'Z');
 end architecture;
