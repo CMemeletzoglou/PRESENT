@@ -3,11 +3,14 @@ use ieee.std_logic_1164.all;
 
 entity key_schedule_top is
         port (
-                input_key     : in std_logic_vector(127 downto 0);
-                round_counter : in std_logic_vector(4 downto 0);
-                ena           : in std_logic;
-                mode          : in std_logic;
-                output_key    : out std_logic_vector(127 downto 0)
+                clk       : in std_logic;
+                rst       : in std_logic;
+                ena       : in std_logic;
+                input_key : in std_logic_vector(127 downto 0);
+                -- round_counter : in std_logic_vector(4 downto 0);
+                mode       : in std_logic;
+                output_key : out std_logic_vector(63 downto 0)
+                -- output_key : out std_logic_vector(127 downto 0)
         );
 end entity key_schedule_top;
 
@@ -15,41 +18,113 @@ architecture structural of key_schedule_top is
         signal  ena_80bit,
                 ena_128bit : std_logic;
 
-        signal key_sched_80_out  : std_logic_vector(79 downto 0);
-        signal key_sched_128_out : std_logic_vector(127 downto 0);
+        signal  current_round_num : std_logic_vector(4 downto 0);
 
-        signal key_out : std_logic_vector(127 downto 0);
+        signal  key_sched_80_out,
+                output_key_80  : std_logic_vector(79 downto 0);
+
+        signal  key_sched_128_out,
+                output_key_128 : std_logic_vector(127 downto 0);
+
+        signal round_key_mux_out, output_key_tmp : std_logic_vector(63 downto 0);
+
+        -- signal  key_out : std_logic_vector(127 downto 0);
 begin
-        ena_80bit <= '1' when (mode = '0' and ena = '1') else '0';
-        ena_128bit <= NOT ena_80bit when (ena = '1') else '0';
+        ena_80bit  <= '1' when (mode = '0' and ena = '1') else '0';
+        -- ena_128bit <= not ena_80bit when (ena = '1') else '0';
+        ena_128bit <= '0' XOR (NOT ena_80bit AND ena);
+
+        round_counter : entity work.counter
+                generic map(
+                        COUNTER_WIDTH => 5
+                )
+                port map(
+                        clk    => clk,
+                        rst    => rst,
+                        updown => '0',
+                        count  => current_round_num
+                );
 
         key_sched_80 : entity work.key_schedule_80
                 port map(
-                        input_key     => input_key(79 downto 0),
-                        round_counter => round_counter,
+                        clk => clk,
+                        rst => rst,
                         ena           => ena_80bit,
+                        input_key     => input_key(79 downto 0),
+                        round_counter => current_round_num,
                         output_key    => key_sched_80_out
                 );
 
         key_sched_128 : entity work.key_schedule_128
                 port map(
-                        input_key     => input_key,
-                        round_counter => round_counter,
+                        clk => clk,
+                        rst => rst,
                         ena           => ena_128bit,
+                        input_key     => input_key,
+                        round_counter => current_round_num,
                         output_key    => key_sched_128_out
                 );
 
-        tri_buf : entity work.tristate_buffer
+        -- output_key_mux : entity work.mux
+        --         generic map (
+        --                 DATA_WIDTH => 128
+        --         )
+        --         port map (
+        --                 input_A => "000000000000000000000000000000000000000000000000" & key_sched_80_out,
+        --                 input_B => key_sched_128_out,
+        --                 sel => mode,
+        --                 mux_out => key_out
+        --         );
+
+        -- output_key <= key_out()
+
+
+
+        key_sched_80_tri_buf : entity work.tristate_buffer
+                generic map(
+                        NUM_BITS => 80
+                )
+                port map(
+                        inp  => key_sched_80_out,
+                        ena  => ena_80bit,
+                        outp => output_key_80
+                );
+
+        key_sched_128_tri_buf : entity work.tristate_buffer
                 generic map(
                         NUM_BITS => 128
                 )
                 port map(
-                        inp => key_out,
-                        ena => ena,
+                        inp  => key_sched_128_out,
+                        ena  => ena_128bit,
+                        outp => output_key_128
+                );
+
+        output_round_key_mux : entity work.mux
+                generic map (
+                        DATA_WIDTH => 64
+                )
+                port map (
+                        input_A => output_key_128(127 downto 64),
+                        input_B => output_key_80(79 downto 16),
+                        sel => ena_80bit,
+                        mux_out => round_key_mux_out
+                );
+
+        output_key_tri_buf : entity work.tristate_buffer
+                generic map (
+                        NUM_BITS => 64
+                )
+                port map (
+                        inp => round_key_mux_out,
+                        ena => (ena_80bit OR ena_128bit),
                         outp => output_key
                 );
 
-        key_out <= "000000000000000000000000000000000000000000000000" & key_sched_80_out when (ena_80bit = '1')
-                else key_sched_128_out when (ena_128bit = '1')
-                else (others => 'Z');
+
+
+
+        -- key_out <= "000000000000000000000000000000000000000000000000" & key_sched_80_out when (ena_80bit = '1')
+        --         else key_sched_128_out when (ena_128bit = '1')
+        --         else (others => 'Z');
 end architecture;

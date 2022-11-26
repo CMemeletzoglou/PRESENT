@@ -14,27 +14,28 @@ entity key_schedule_80 is
 end entity key_schedule_80;
 
 architecture structural of key_schedule_80 is
-        signal mux_sel : std_logic;
+        signal  mux_sel : std_logic;
 
         signal  shifted_vec,
                 tmp,
                 reg_out,
-                mux_out : std_logic_vector(79 downto 0);
+                mux_out,
+                key_mux_out : std_logic_vector(79 downto 0);
 begin
-        mux_sel <= '1' when (round_counter = "00001") else '0';
+        -- mux_sel <= '1' when (round_counter = "00001") else '0';
+        mux_sel <= '1' when (round_counter = "00000" and ena = '1') else '0';
 
+        -- pass feedback from output register or input key at the very first round
         key_sched_input_mux : entity work.mux
-                generic map (
+                generic map(
                         DATA_WIDTH => 80
                 )
-                port map (
+                port map(
                         input_A => reg_out,
                         input_B => input_key,
-                        sel => mux_sel,
+                        sel     => mux_sel,
                         mux_out => mux_out
                 );
-
-
 
         shifted_vec <= mux_out(18 downto 0) & mux_out(79 downto 19);
 
@@ -48,15 +49,26 @@ begin
         tmp(75 downto 20) <= shifted_vec(75 downto 20);
         tmp(14 downto 0)  <= shifted_vec(14 downto 0);
 
+        output_mux : entity work.mux
+                generic map(
+                        DATA_WIDTH => 80 -- 64 in the future?
+                )
+                port map(
+                        input_A => tmp,
+                        input_B => input_key,
+                        sel     => mux_sel,
+                        mux_out => key_mux_out
+                );
+
         output_reg : entity work.reg
-                generic map (
+                generic map(
                         DATA_WIDTH => 80
                 )
-                port map (
-                        clk => clk,
-                        rst => rst,
-                        ena => ena,
-                        din => tmp,
+                port map(
+                        clk  => clk,
+                        rst  => rst,
+                        ena  => ena,
+                        din  => key_mux_out,
                         dout => reg_out
                 );
 
