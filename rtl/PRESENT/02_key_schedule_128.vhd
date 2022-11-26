@@ -22,8 +22,7 @@ architecture structural of key_schedule_128 is
                 mux_out,
                 key_mux_out : std_logic_vector(127 downto 0);
 begin
-        -- mux_sel <= '1' when (round_counter = "00001") else '0';
-        mux_sel <= '1' when (round_counter = "00000" AND ena = '1') else '0';
+        mux_sel <= '1' when (round_counter = "00000" and ena = '1') else '0';
 
         -- pass feedback from output register or input key at the very first round
         key_sched_input_mux : entity work.mux
@@ -56,13 +55,13 @@ begin
         tmp(61 downto 0)   <= shifted_vec(61 downto 0);
 
         output_mux : entity work.mux
-                generic map (
+                generic map(
                         DATA_WIDTH => 128
                 )
-                port map (
+                port map(
                         input_A => tmp,
                         input_B => input_key,
-                        sel => mux_sel,
+                        sel     => mux_sel,
                         mux_out => key_mux_out
                 );
 
@@ -77,18 +76,5 @@ begin
                         din  => key_mux_out,
                         dout => reg_out
                 );
-
         output_key <= reg_out;
-       
-
-
-        -- tri_buf : entity work.tristate_buffer
-        --         generic map(
-        --                 NUM_BITS => 128
-        --         )
-        --         port map(
-        --                 inp  => tmp,
-        --                 ena  => ena,
-        --                 outp => output_key
-        --         );
 end architecture;

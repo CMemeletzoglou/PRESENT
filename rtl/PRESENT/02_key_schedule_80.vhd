@@ -3,8 +3,8 @@ use ieee.std_logic_1164.all;
 
 entity key_schedule_80 is
         port (
-                clk           : in std_logic; -- new signal 
-                rst           : in std_logic; -- new signal 
+                clk           : in std_logic; 
+                rst           : in std_logic;
                 ena           : in std_logic;
                 input_key     : in std_logic_vector(79 downto 0);
                 round_counter : in std_logic_vector(4 downto 0);
@@ -22,7 +22,6 @@ architecture structural of key_schedule_80 is
                 mux_out,
                 key_mux_out : std_logic_vector(79 downto 0);
 begin
-        -- mux_sel <= '1' when (round_counter = "00001") else '0';
         mux_sel <= '1' when (round_counter = "00000" and ena = '1') else '0';
 
         -- pass feedback from output register or input key at the very first round
@@ -51,7 +50,7 @@ begin
 
         output_mux : entity work.mux
                 generic map(
-                        DATA_WIDTH => 80 -- 64 in the future?
+                        DATA_WIDTH => 80 
                 )
                 port map(
                         input_A => tmp,
@@ -71,17 +70,5 @@ begin
                         din  => key_mux_out,
                         dout => reg_out
                 );
-
         output_key <= reg_out;
-
-
-        -- tri_buf : entity work.tristate_buffer
-        --         generic map(
-        --                 NUM_BITS => 80
-        --         )
-        --         port map(
-        --                 inp  => tmp,
-        --                 ena  => ena,
-        --                 outp => output_key
-        --         );
 end architecture;
