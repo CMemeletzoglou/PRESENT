@@ -3,12 +3,13 @@ use ieee.std_logic_1164.all;
 
 entity key_schedule_top is
         port (
-                clk       : in std_logic;
-                rst       : in std_logic;
-                ena       : in std_logic;
-                input_key : in std_logic_vector(127 downto 0);
+                clk        : in std_logic;
+                rst        : in std_logic;
+                ena        : in std_logic;
+                input_key  : in std_logic_vector(127 downto 0);
                 mode       : in std_logic;
-                output_key : out std_logic_vector(63 downto 0) -- output: round keys
+                output_key : out std_logic_vector(63 downto 0); -- output: round keys
+                round_num  : out std_logic_vector(4 downto 0)
         );
 end entity key_schedule_top;
 
@@ -18,14 +19,14 @@ architecture structural of key_schedule_top is
 
         signal  current_round_num : std_logic_vector(4 downto 0);
 
-        signal  key_sched_80_out  : std_logic_vector(79 downto 0);
+        signal  key_sched_80_out : std_logic_vector(79 downto 0);
 
         signal  key_sched_128_out : std_logic_vector(127 downto 0);
 
         signal  round_key_mux_out : std_logic_vector(63 downto 0);
 begin
         ena_80bit  <= '1' when (mode = '0' and ena = '1') else '0';
-        ena_128bit <= '0' XOR (NOT ena_80bit AND ena);
+        ena_128bit <= '0' xor (not ena_80bit and ena);
 
         round_counter : entity work.counter
                 generic map(
@@ -78,4 +79,5 @@ begin
                         ena  => (ena_80bit or ena_128bit),
                         outp => output_key
                 );
+         round_num <= current_round_num;
 end architecture;
