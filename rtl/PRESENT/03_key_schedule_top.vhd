@@ -79,5 +79,5 @@ begin
                         ena  => (ena_80bit or ena_128bit),
                         outp => output_key
                 );
-         round_num <= current_round_num;
+        round_num <= current_round_num;
 end architecture;

@@ -9,7 +9,6 @@ entity key_schedule_80 is
                 input_key     : in std_logic_vector(79 downto 0);
                 round_counter : in std_logic_vector(4 downto 0);
                 output_key    : out std_logic_vector(79 downto 0)
-
         );
 end entity key_schedule_80;
 

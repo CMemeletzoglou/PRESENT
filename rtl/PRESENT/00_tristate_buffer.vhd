@@ -1,19 +1,18 @@
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
+library ieee;
+use ieee.std_logic_1164.all;
 
-ENTITY tristate_buffer IS
+entity tristate_buffer is
         generic (
-                NUM_BITS: natural
+                NUM_BITS : natural
         );
-        PORT(
-                inp: IN std_logic_vector(NUM_BITS-1 DOWNTO 0);
-                ena: IN std_logic;
-                outp: OUT std_logic_vector(NUM_BITS-1 DOWNTO 0)
+        port (
+                inp  : in std_logic_vector(NUM_BITS - 1 downto 0);
+                ena  : in std_logic;
+                outp : out std_logic_vector(NUM_BITS - 1 downto 0)
         );
-END ENTITY;
+end entity;
 
-ARCHITECTURE tri_state of tristate_buffer IS
-BEGIN
-        outp <= inp WHEN (ena = '1') ELSE (others => 'Z');
-END ARCHITECTURE;
-
+architecture tri_state of tristate_buffer is
+begin
+        outp <= inp when (ena = '1') else (others => 'Z');
+end architecture;
