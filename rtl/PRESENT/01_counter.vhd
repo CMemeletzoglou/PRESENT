@@ -9,6 +9,7 @@ entity counter is
         port (
                 clk    : in std_logic;
                 rst    : in std_logic;
+                ena    : in std_logic;
                 updown : in std_logic;
                 count  : out std_logic_vector(COUNTER_WIDTH - 1 downto 0)
         );
@@ -17,7 +18,7 @@ end counter;
 architecture behavioral of counter is
         signal curr_count : unsigned(COUNTER_WIDTH - 1 downto 0) := (others => '0');
 begin
-        process (clk, rst, updown) -- asynchronous reset
+        process (clk, rst, ena, updown) -- asynchronous reset
                 variable count_step : integer;
         begin
                 if (rst = '1') then
@@ -27,9 +28,11 @@ begin
                         elsif (updown = '1') then
                                 count_step := - 1;
                         end if;
-                elsif rising_edge(clk) then
-                        -- up/down functionality
-                        curr_count <= curr_count + count_step;
+                elsif (ena = '1') then
+                        if rising_edge(clk) then
+                                -- up/down functionality
+                                curr_count <= curr_count + count_step;
+                        end if;
                 end if;
         end process;
 
