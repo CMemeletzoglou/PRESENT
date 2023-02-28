@@ -23,17 +23,19 @@ architecture behavioral of key_mem is
 
         signal ram_block : ROUND_KEY_MEM;
 begin
-        process (clk)
+        process (clk, wr_en)
         begin
                 if rising_edge(clk) then
                         if (wr_en = '1') then -- write operation
                                 ram_block(to_integer(unsigned(addr))) <= data_in;
                         end if;
-                        -- for every other possible std_logic value of wr_en
-                        -- read out the data pointed by the address input
-                        data_out <= ram_block(to_integer(unsigned(addr)));
                 end if;
         end process;
+        -- the contents of the memory address indicated by the address bus' value
+        -- must always appear on the output data bus        
+        data_out <= ram_block(to_integer(unsigned(addr)));
+
+
         -- port_A : process (clk)
         -- begin
         -- 	if rising_edge(clk) then
