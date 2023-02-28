@@ -27,11 +27,13 @@ architecture structural of present_dec is
                 inv_sbox_layer_input,
                 inv_sbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 
-        signal key_reg_out : std_logic_vector(63 downto 0);
+        signal  key_reg_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
+
+        signal  round_num : std_logic_vector(4 downto 0);
 begin
         -- control signal for the multiplexers controlling the input of
         -- State and Key registers
-        mux_sel <= '1' when (current_round_num = "00000") else '0';
+        mux_sel <= '1' when (round_num = "00000") else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -106,8 +108,10 @@ begin
                         rst    => rst,
                         ena    => ena,
                         updown => '1', -- count downwards
-                        count  => current_round_num
+                        count  => round_num
                 );
+
+        current_round_num <= round_num;
 
         -- 64-bit plaintext register
         plain_reg : entity work.reg
@@ -128,7 +132,7 @@ begin
         -- So the round_counter is found to be "00000", during the first round of
         -- the next decryption cycle. So we need 31 cycles for the actual decryption
         -- + 1 cycle to get the decrypted plaintext on the plaintext output bus
-        with current_round_num select
+        with round_num select
                 plain_enable <= '1' when "00000",
                 '0' when others;
 
@@ -139,7 +143,7 @@ begin
         -- "00000" as in the select statement above, in order to give the ciphertext
         -- register, the necessary cycle to pass the ciphertext from its input to its 
         -- output
-        with current_round_num select
+        with round_num select
                 ready <= '1' when "11111",
                 '0' when others;
         -- small issue though.. the ready flag is also raised during the first decryption
