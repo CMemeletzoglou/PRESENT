@@ -22,8 +22,8 @@ architecture structural of key_schedule_80 is
                 key_mux_out : std_logic_vector(79 downto 0);
 begin
         mux_sel <= '1' when (round_counter = "00000" and ena = '1') else '0';
-
         -- pass feedback from output register or input key at the very first round
+        
         key_sched_input_mux : entity work.mux
                 generic map(
                         DATA_WIDTH => 80

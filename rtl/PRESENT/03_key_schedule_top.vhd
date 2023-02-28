@@ -6,8 +6,8 @@ entity key_schedule_top is
                 clk        : in std_logic;
                 rst        : in std_logic;
                 ena        : in std_logic;
+                mode       : in std_logic; -- 0 for 80-bit mode, and 1 for 128-bit mode
                 input_key  : in std_logic_vector(127 downto 0);
-                mode       : in std_logic;
                 output_key : out std_logic_vector(63 downto 0); -- output: round keys
                 round_num  : out std_logic_vector(4 downto 0)
         );
@@ -35,6 +35,7 @@ begin
                 port map(
                         clk    => clk,
                         rst    => rst,
+                        ena    => ena,
                         updown => '0',
                         count  => current_round_num
                 );
