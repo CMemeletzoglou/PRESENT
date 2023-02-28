@@ -1,40 +1,33 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-library work;
-use work.key_length_pack.all;
-
 entity present_dec is
         port (
-                clk        : in std_logic;
-                rst        : in std_logic;
-                ena        : in std_logic;
-                ciphertext : in std_logic_vector(63 downto 0);
-                key        : in std_logic_vector(KEY_LENGTH - 1 downto 0);
-                plaintext  : out std_logic_vector(63 downto 0);
-                ready      : out std_logic
+                clk               : in std_logic;
+                rst               : in std_logic;
+                ena               : in std_logic;
+                ciphertext        : in std_logic_vector(63 downto 0);
+                round_key         : in std_logic_vector(63 downto 0);
+                current_round_num : out std_logic_vector(4 downto 0);
+                plaintext         : out std_logic_vector(63 downto 0);
+                ready             : out std_logic
         );
 end present_dec;
 
 architecture structural of present_dec is
+        constant BLOCK_SIZE : natural := 64;
+
         signal  mux_sel,
                 plain_enable : std_logic;
 
-        signal  current_round_num : std_logic_vector(4 downto 0);
-
         signal  state_reg_mux_out,
-                state : std_logic_vector(63 downto 0);
+                state : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 
         signal  inv_pbox_layer_input,
                 inv_sbox_layer_input,
-                inv_sbox_layer_out,
-                round_key : std_logic_vector(63 downto 0);
+                inv_sbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 
-        signal  key_reg_out,
-                key_reg_mux_out,
-                key_schedule_out : std_logic_vector(KEY_LENGTH - 1 downto 0);
-
-        constant BLOCK_SIZE : natural := 64;
+        signal key_reg_out : std_logic_vector(63 downto 0);
 begin
         -- control signal for the multiplexers controlling the input of
         -- State and Key registers
@@ -52,18 +45,6 @@ begin
                         mux_out => state_reg_mux_out
                 );
 
-        -- 80-bit/128-bit mux which drives the key register
-        key_reg_mux : entity work.mux
-                generic map(
-                        DATA_WIDTH => KEY_LENGTH
-                )
-                port map(
-                        input_A => key_schedule_out,
-                        input_B => key,
-                        sel     => mux_sel,
-                        mux_out => key_reg_mux_out
-                );
-
         -- 64-bit state register
         state_reg : entity work.reg
                 generic map(
@@ -76,22 +57,19 @@ begin
                         din  => state_reg_mux_out,
                         dout => state
                 );
-
-        -- 80-bit/128-bit key register, at each round it stores the current subkey
+        -- 64-bit key register, it stores the current round key retrieved from the round keys memory
+        -- TODO : unecessary (??)
         key_reg : entity work.reg
                 generic map(
-                        DATA_WIDTH => KEY_LENGTH
+                        DATA_WIDTH => 64
                 )
                 port map(
                         clk  => clk,
                         rst  => rst,
                         ena  => ena,
-                        din  => key_reg_mux_out,
+                        din  => round_key,
                         dout => key_reg_out
                 );
-
-        -- current round key, it consists of the 64 leftmost bits of the key register
-        round_key <= key_reg_out(KEY_LENGTH - 1 downto KEY_LENGTH - 64);
 
         -- 64-bit xor to add current round key to state
         xor_64 : entity work.xor_n
@@ -100,7 +78,7 @@ begin
                 )
                 port map(
                         a => state,
-                        b => round_key,
+                        b => key_reg_out,
                         y => inv_pbox_layer_input
                 );
 
@@ -126,16 +104,9 @@ begin
                 port map(
                         clk    => clk,
                         rst    => rst,
+                        ena    => ena,
                         updown => '1', -- count downwards
                         count  => current_round_num
-                );
-
-        -- key schedule module, produces the new contents of the key register
-        inv_key_schedule : entity work.inv_key_schedule
-                port map(
-                        input_key     => key_reg_out,
-                        round_counter => current_round_num,
-                        output_key    => key_schedule_out
                 );
 
         -- 64-bit plaintext register
