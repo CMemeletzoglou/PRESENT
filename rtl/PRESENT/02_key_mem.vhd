@@ -8,7 +8,7 @@ entity key_mem is
                 clk      : in std_logic;
                 addr     : in std_logic_vector(4 downto 0);
                 data_in  : in std_logic_vector(63 downto 0);
-                wr_en    : in std_logic;
+                wr_ena    : in std_logic;
                 data_out : out std_logic_vector(63 downto 0)
         );
 end entity key_mem;
@@ -23,10 +23,10 @@ architecture behavioral of key_mem is
 
         signal ram_block : ROUND_KEY_MEM;
 begin
-        process (clk, wr_en)
+        process (clk, wr_ena)
         begin
                 if rising_edge(clk) then
-                        if (wr_en = '1') then -- write operation
+                        if (wr_ena = '1') then -- write operation
                                 ram_block(to_integer(unsigned(addr))) <= data_in;
                         end if;
                 end if;

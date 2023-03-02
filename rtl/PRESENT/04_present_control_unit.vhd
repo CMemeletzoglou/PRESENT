@@ -18,7 +18,7 @@ entity present_control_unit is
                 enc_ena       : out std_logic; -- encryption datapath enable
                 dec_ena       : out std_logic; -- decryption datapath enable
                 key_sched_ena : out std_logic; -- top-level key schedule module enable
-                mem_wr_en     : out std_logic; -- round keys memory write enable
+                mem_wr_ena    : out std_logic; -- round keys memory write enable
                 counter_ena   : out std_logic; -- enable signal for the global round counter
                 counter_rst   : out std_logic; -- reset signal for the global round counter
                 counter_mode  : out std_logic;
@@ -32,17 +32,17 @@ begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
 
-        state_reg_proc : process (clk, rst)
+        state_reg_proc : process (clk, rst, ena)
         begin
                 if (rst = '1') then
                         curr_state <= RESET;
-                elsif rising_edge(clk) then
+                elsif (ena = '1' and rising_edge(clk)) then
                         curr_state <= next_state; -- curr_state stored in register of width log2(#states)
                 end if;
         end process state_reg_proc;
 
         -- next_state_logic : process (curr_state, enc_ready, dec_ready)
-        next_state_logic : process (curr_state, curr_round)
+        next_state_logic : process (curr_state, ena, key_ena, mode_sel, curr_round, enc_ready, dec_ready)
                 variable keys_count : natural range 0 to 32;
         begin
                 case curr_state is
@@ -68,7 +68,7 @@ begin
                         when KEY_GEN =>
                                 key_sched_ena <= '1';
                                 counter_ena   <= '1'; -- start the counter
-                                mem_wr_en     <= '1'; -- write enable for key storage  
+                                mem_wr_ena    <= '1'; -- write enable for key storage  
 
                                 keys_count := keys_count + 1;
 
@@ -80,7 +80,7 @@ begin
                                         -- counter_mode <= mode_sel(0); -- set the counter to the proper mode
                                         -- counter_ena <= '0';
 
-                                        mem_wr_en <= '0';
+                                        mem_wr_ena <= '0';
                                 end if;
 
                         when KEYS_READY =>
