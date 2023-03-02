@@ -26,7 +26,7 @@ begin
                         if (updown = '0') then
                                 count_step := 1;
                         elsif (updown = '1') then
-                                count_step := - 1;
+                                count_step := -1;
                         end if;
                 elsif (ena = '1') then
                         if rising_edge(clk) then
