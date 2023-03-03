@@ -8,9 +8,9 @@ entity present_enc is
                 ena               : in std_logic;
                 plaintext         : in std_logic_vector(63 downto 0);
                 round_key         : in std_logic_vector(63 downto 0); -- read from round keys mem
-                current_round_num : out std_logic_vector(4 downto 0);
-                ciphertext        : out std_logic_vector(63 downto 0);
-                ready             : out std_logic
+                current_round_num : in std_logic_vector(4 downto 0);
+                ciphertext        : out std_logic_vector(63 downto 0)
+                -- ready             : out std_logic
         );
 end present_enc;
 
@@ -25,16 +25,11 @@ architecture structural of present_enc is
 
         signal  sbox_layer_input,
                 pbox_layer_input,
-                pbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
-
-        signal  key_reg_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
-
-        signal  round_num : std_logic_vector(4 downto 0);
+                pbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);        
 begin
-        -- control signal for the multiplexers controlling the input of
-        -- State and Key registers
-        mux_sel <= '1' when (round_num = "00000") else '0';
-
+        -- control signal for the multiplexers controlling the input of the State register        
+        mux_sel <= '1' when (current_round_num = "00000" and ena = '1') else '0';
+        
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
                 generic map(
@@ -60,20 +55,6 @@ begin
                         dout => state
                 );
 
-        -- 64-bit key register, it stores the current round key retrieved from the round keys memory
-        -- TODO : unecessary (??)
-        key_reg : entity work.reg
-                generic map(
-                        DATA_WIDTH => 64
-                )
-                port map(
-                        clk  => clk,
-                        rst  => rst,
-                        ena  => ena,
-                        din  => round_key,
-                        dout => key_reg_out
-                );
-
         -- 64-bit xor to add current round key to state
         xor_64 : entity work.xor_n
                 generic map(
@@ -81,7 +62,7 @@ begin
                 )
                 port map(
                         a => state,
-                        b => key_reg_out,
+                        b => round_key,                        
                         y => sbox_layer_input
                 );
 
@@ -98,21 +79,6 @@ begin
                         data_in  => pbox_layer_input,
                         data_out => pbox_layer_out
                 );
-
-        -- round counter, incremented by 1 at each network round
-        round_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => 5
-                )
-                port map(
-                        clk    => clk,
-                        rst    => rst,
-                        ena    => ena,
-                        updown => '0',
-                        count  => round_num
-                );
-
-        current_round_num <= round_num;
 
         -- 64-bit ciphertext register
         ciph_reg : entity work.reg
@@ -133,7 +99,7 @@ begin
         -- So the round_counter is found to be "00000", during the first round of
         -- the next encryption cycle. So we need 31 cycles for the actual encryption
         -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
-        with round_num select
+        with current_round_num select
                 ciph_enable <= '1' when "00000",
                 '0' when others;
 
@@ -144,9 +110,9 @@ begin
         -- "00000" as in the select statement above, in order to give the ciphertext
         -- register, the necessary cycle to pass the ciphertext from its input to its 
         -- output
-        with round_num select
-                ready <= '1' when "00001",
-                '0' when others;
+        -- with current_round_num select
+        --         ready <= '1' when "00001",
+        --         '0' when others;
 
         -- small issue though.. the ready flag is also raised during the first encryption
         -- process' second cycle (counter = 000001)

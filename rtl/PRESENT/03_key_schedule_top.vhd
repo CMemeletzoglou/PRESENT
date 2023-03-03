@@ -7,17 +7,15 @@ entity key_schedule_top is
                 rst        : in std_logic;
                 ena        : in std_logic;
                 mode       : in std_logic; -- 0 for 80-bit mode, and 1 for 128-bit mode
+                current_round_num  : in std_logic_vector(4 downto 0);
                 input_key  : in std_logic_vector(127 downto 0);
-                output_key : out std_logic_vector(63 downto 0); -- output: round keys
-                round_num  : out std_logic_vector(4 downto 0)
+                output_key : out std_logic_vector(63 downto 0) -- output: round keys
         );
 end entity key_schedule_top;
 
 architecture structural of key_schedule_top is
         signal  ena_80bit,
                 ena_128bit : std_logic;
-
-        signal  current_round_num : std_logic_vector(4 downto 0);
 
         signal  key_sched_80_out : std_logic_vector(79 downto 0);
 
@@ -27,18 +25,6 @@ architecture structural of key_schedule_top is
 begin
         ena_80bit  <= '1' when (mode = '0' and ena = '1') else '0';
         ena_128bit <= '0' xor (not ena_80bit and ena);
-
-        round_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => 5
-                )
-                port map(
-                        clk    => clk,
-                        rst    => rst,
-                        ena    => ena,
-                        updown => '0',
-                        count  => current_round_num
-                );
 
         key_sched_80 : entity work.key_schedule_80
                 port map(
@@ -79,6 +65,5 @@ begin
                         inp  => round_key_mux_out,
                         ena  => (ena_80bit or ena_128bit),
                         outp => output_key
-                );
-        round_num <= current_round_num;
+                );        
 end architecture;

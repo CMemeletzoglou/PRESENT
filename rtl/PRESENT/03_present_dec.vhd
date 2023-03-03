@@ -8,9 +8,8 @@ entity present_dec is
                 ena               : in std_logic;
                 ciphertext        : in std_logic_vector(63 downto 0);
                 round_key         : in std_logic_vector(63 downto 0);
-                current_round_num : out std_logic_vector(4 downto 0);
-                plaintext         : out std_logic_vector(63 downto 0);
-                ready             : out std_logic
+                current_round_num : in std_logic_vector(4 downto 0);             
+                plaintext         : out std_logic_vector(63 downto 0)                
         );
 end present_dec;
 
@@ -26,14 +25,10 @@ architecture structural of present_dec is
         signal  inv_pbox_layer_input,
                 inv_sbox_layer_input,
                 inv_sbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
-
-        signal  key_reg_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
-
-        signal  round_num : std_logic_vector(4 downto 0);
 begin
         -- control signal for the multiplexers controlling the input of
         -- State and Key registers
-        mux_sel <= '1' when (round_num = "00000") else '0';
+        mux_sel <= '1' when (current_round_num = "00000") else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -59,19 +54,6 @@ begin
                         din  => state_reg_mux_out,
                         dout => state
                 );
-        -- 64-bit key register, it stores the current round key retrieved from the round keys memory
-        -- TODO : unecessary (??)
-        key_reg : entity work.reg
-                generic map(
-                        DATA_WIDTH => 64
-                )
-                port map(
-                        clk  => clk,
-                        rst  => rst,
-                        ena  => ena,
-                        din  => round_key,
-                        dout => key_reg_out
-                );
 
         -- 64-bit xor to add current round key to state
         xor_64 : entity work.xor_n
@@ -80,7 +62,7 @@ begin
                 )
                 port map(
                         a => state,
-                        b => key_reg_out,
+                        b => round_key,
                         y => inv_pbox_layer_input
                 );
 
@@ -97,21 +79,6 @@ begin
                         inv_sbox_layer_in  => inv_sbox_layer_input,
                         inv_sbox_layer_out => inv_sbox_layer_out
                 );
-
-        -- round counter, incremented by 1 at each network round
-        round_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => 5
-                )
-                port map(
-                        clk    => clk,
-                        rst    => rst,
-                        ena    => ena,
-                        updown => '1', -- count downwards
-                        count  => round_num
-                );
-
-        current_round_num <= round_num;
 
         -- 64-bit plaintext register
         plain_reg : entity work.reg
@@ -132,7 +99,7 @@ begin
         -- So the round_counter is found to be "00000", during the first round of
         -- the next decryption cycle. So we need 31 cycles for the actual decryption
         -- + 1 cycle to get the decrypted plaintext on the plaintext output bus
-        with round_num select
+        with current_round_num select
                 plain_enable <= '1' when "00000",
                 '0' when others;
 
@@ -143,9 +110,9 @@ begin
         -- "00000" as in the select statement above, in order to give the ciphertext
         -- register, the necessary cycle to pass the ciphertext from its input to its 
         -- output
-        with round_num select
-                ready <= '1' when "11111",
-                '0' when others;
+        -- with current_round_num select
+        --         ready <= '1' when "11111",
+        --         '0' when others;
         -- small issue though.. the ready flag is also raised during the first decryption
         -- process' second cycle (counter = 000001)
 end structural;

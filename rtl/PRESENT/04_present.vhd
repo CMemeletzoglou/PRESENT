@@ -1,5 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+use work.state_pack.all; -- for STATE type declaration
 
 entity present is
         port (
@@ -16,76 +19,125 @@ entity present is
 end entity present;
 
 architecture rtl of present is
+        signal  key_sched_out,
+                key_mem_out     : std_logic_vector(63 downto 0);
+
+        signal  current_round   : std_logic_vector(4 downto 0);
+
+        signal  counter_ena,
+                counter_rst,
+                counter_mode    : std_logic;
+
         signal  enc_ena,
-                dec_ena : std_logic;
+                dec_ena         : std_logic;
 
-        -- signal enc_dp_out : std_logic_vector(63 downto 0);
+        signal  key_sched_ena,
+                mem_wr_ena      : std_logic;
 
-        signal key_sched_out : std_logic_vector(127 downto 0);
+        signal cu_state : STATE; -- remove this , debugging signal
+        signal gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
 
-        signal current_round : std_logic_vector(4 downto 0);
+        signal ciphertext, plaintext : std_logic_vector(63 downto 0);
 
-        signal key_mem_out : std_logic_vector(63 downto 0);
+        signal mem_address : std_logic_vector(4 downto 0);
+
+        signal mux_sel : std_logic;
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
+        mux_sel <= mode_sel(0);
 
-        enc_ena <= NOT mode_sel(0);
-        dec_ena <= mode_sel(0);
-
-        -- the encryption and decryption units must be modified
-        -- They don't need to contain an embedded key schedule unit,
-        -- they will just read the round keys from the memory.
-        -- 
-        -- Therefore, their interface must change.. 
-        -- They must be configured to accept a 128 bit key input vector
-        -- and use the lowest 80 bits if needed, in respect to the value
-        -- of mode_sel(1), which also needs to be passed to them as
-        -- a 'mode' std_logic signal
-        enc_dp : entity work.present_enc
+        control_unit : entity work.present_control_unit
                 port map(
-                        clk => clk,
-                        rst => rst,
-                        ena => enc_ena,
-                        plaintext => data_in,
-                        key => key,
-                        ciphertext => data_out,
-                        ready => ready
+                        -- inputs
+                        clk        => clk,
+                        rst        => rst,
+                        ena        => ena,
+                        key_ena    => key_ena,
+                        mode_sel   => mode_sel,
+                        curr_round => current_round,
+
+                        -- outputs
+                        enc_ena       => enc_ena,
+                        dec_ena       => dec_ena,
+                        key_sched_ena => key_sched_ena,
+                        mem_wr_ena    => mem_wr_ena,
+                        counter_ena   => counter_ena,
+                        counter_rst   => counter_rst,
+                        counter_mode  => counter_mode,
+
+                        ready         => ready,
+
+                        cu_state => cu_state,
+                        gen_count => gen_count
                 );
 
-        dec_dp : entity work.present_dec
+        round_counter : entity work.counter
+                generic map(
+                        COUNTER_WIDTH => 5
+                )
                 port map(
-                        clk => clk,
-                        rst => rst,
-                        ena => dec_ena,
-                        ciphertext => data_in,
-                        key => key,
-                        plaintext => data_out,
-                        ready => ready
+                        clk    => clk,
+                        rst    => counter_rst,
+                        ena    => counter_ena,
+                        updown => counter_mode,
+                        count  => current_round
                 );
 
         key_sched : entity work.key_schedule_top
                 port map(
-                        clk => clk,
-                        rst => rst, 
-                        ena => key_ena,
-                        input_key => key,
-                        mode => mode_sel(1),
-                        output_key => key_sched_out,
-                        round_num => current_round
+                        clk               => clk,
+                        rst               => rst,
+                        ena               => key_sched_ena,
+                        mode              => mode_sel(1),
+                        input_key         => key,
+                        output_key        => key_sched_out,
+                        current_round_num => current_round
                 );
 
+        mem_address <= std_logic_vector(unsigned(current_round) - 1);
         round_key_mem : entity work.key_mem
                 port map(
-                        clk => clk,
-                        addr => current_round,
-                        data_in => key_sched_out,
-                        wr_en => '1', -- always?
-                        data_out => key_mem_out
+                        clk       => clk,
+                        -- addr      => current_round,
+                        addr      => mem_address,
+                        data_in   => key_sched_out,
+                        wr_ena    => mem_wr_ena,
+                        data_out  => key_mem_out
                 );
-		
 
+        enc_dp : entity work.present_enc
+                port map(
+                        clk               => clk,
+                        rst               => rst,
+                        ena               => enc_ena,
+                        plaintext         => data_in,
+                        round_key         => key_mem_out,
+                        current_round_num => current_round,
+                        -- ciphertext        => data_out                        
+                        ciphertext  => ciphertext
+                );
 
+        dec_dp : entity work.present_dec
+                port map(
+                        clk               => clk,
+                        rst               => rst,
+                        ena               => dec_ena,
+                        ciphertext        => data_in,
+                        round_key         => key_mem_out,
+                        current_round_num => current_round,
+                        -- plaintext         => data_out                        
+                        plaintext => plaintext
+                );
 
-
+        out_mux : entity work.mux               -- is this mux really necessary?
+                generic map(
+                        DATA_WIDTH => 64
+                )
+                port map(
+                        input_A => ciphertext,
+                        input_B => plaintext,
+                        sel => mux_sel,
+                        mux_out => data_out
+                );
 end architecture;

@@ -8,7 +8,7 @@ entity key_mem is
                 clk      : in std_logic;
                 addr     : in std_logic_vector(4 downto 0);
                 data_in  : in std_logic_vector(63 downto 0);
-                wr_ena    : in std_logic;
+                wr_ena   : in std_logic;
                 data_out : out std_logic_vector(63 downto 0)
         );
 end entity key_mem;
