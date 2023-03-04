@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.state_pack.all; -- for STATE type declaration
+use work.state_pkg.all; -- for STATE type declaration
 
 entity present_control_unit is
         port (
