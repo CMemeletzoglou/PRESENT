@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 library work;
-use work.state_pack.all;
+use work.state_pkg.all;
 
 entity present_control_unit_tb is
 end;

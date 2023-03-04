@@ -3,7 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.key_length_pack.all;
+use work.key_length_pkg.all;
 
 entity inv_key_schedule is  
         port (
