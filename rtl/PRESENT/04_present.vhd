@@ -113,8 +113,7 @@ begin
                         ena               => enc_ena,
                         plaintext         => data_in,
                         round_key         => key_mem_out,
-                        current_round_num => current_round,
-                        -- ciphertext        => data_out                        
+                        current_round_num => current_round,                        
                         ciphertext  => ciphertext
                 );
 
@@ -125,12 +124,12 @@ begin
                         ena               => dec_ena,
                         ciphertext        => data_in,
                         round_key         => key_mem_out,
-                        current_round_num => current_round,
-                        -- plaintext         => data_out                        
+                        current_round_num => current_round,                        
                         plaintext => plaintext
                 );
-
-        out_mux : entity work.mux               -- is this mux really necessary?
+        
+        -- mux that controls the output from the encryption and decryption cores
+        out_mux : entity work.mux             
                 generic map(
                         DATA_WIDTH => 64
                 )
