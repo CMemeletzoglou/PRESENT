@@ -8,8 +8,8 @@ entity present_dec is
                 ena               : in std_logic;
                 ciphertext        : in std_logic_vector(63 downto 0);
                 round_key         : in std_logic_vector(63 downto 0);
-                current_round_num : in std_logic_vector(4 downto 0);             
-                plaintext         : out std_logic_vector(63 downto 0)                
+                round_counter_val : in std_logic_vector(4 downto 0);
+                plaintext         : out std_logic_vector(63 downto 0)
         );
 end present_dec;
 
@@ -26,10 +26,12 @@ architecture structural of present_dec is
                 inv_sbox_layer_input,
                 inv_sbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 begin
-        -- control signal for the multiplexers controlling the input of
-        -- State and Key registers
-        -- mux_sel <= '1' when (current_round_num = "00000" and ena = '1') else '0';
-        mux_sel <= '1' when (current_round_num = "11111" and ena = '1') else '0';
+        -- Control signal for the multiplexer controlling the input of the State register
+        -- When decrypting, the round counter is counting downwards starting from "11111".
+        -- We need to fetch the round keys from the round keys memory, in a reversed order.
+        -- Thus, when the decryption datapath is enabled and the counter has its initial value,
+        -- we need to load the ciphertext into the State register.        
+        mux_sel <= '1' when (round_counter_val = "11111" and ena = '1') else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -94,14 +96,8 @@ begin
                         dout => plaintext
                 );
 
-        -- plaintext register enable signal, must be activated when the
-        -- round_counter overflows to "00000". Since the output of the
-        -- round_counter is a signal, the value read from it is one cycle behind.
-        -- So the round_counter is found to be "00000", during the first round of
-        -- the next decryption cycle. So we need 31 cycles for the actual decryption
-        -- + 1 cycle to get the decrypted plaintext on the plaintext output bus
-        with current_round_num select
-                -- plain_enable <= '1' when "00000",
+        -- plaintext register enable signal, must be activated when the round counter overflows to "00000". 
+        with round_counter_val select
                 plain_enable <= '1' when "11111",
                 '0' when others;
 end structural;

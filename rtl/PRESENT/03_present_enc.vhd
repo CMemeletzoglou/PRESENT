@@ -8,7 +8,7 @@ entity present_enc is
                 ena               : in std_logic;
                 plaintext         : in std_logic_vector(63 downto 0);
                 round_key         : in std_logic_vector(63 downto 0); -- read from round keys mem
-                current_round_num : in std_logic_vector(4 downto 0);
+                round_counter_val : in std_logic_vector(4 downto 0);
                 ciphertext        : out std_logic_vector(63 downto 0)
         );
 end present_enc;
@@ -26,8 +26,12 @@ architecture structural of present_enc is
                 pbox_layer_input,
                 pbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);        
 begin
-        -- control signal for the multiplexers controlling the input of the State register        
-        mux_sel <= '1' when (current_round_num = "00000" and ena = '1') else '0';
+        -- Control signal for the multiplexer controlling the input of the State register
+        -- When encrypting, the round counter is counting upwards starting from "00000".
+        -- We need to fetch the round keys from the round keys memory.
+        -- Thus, when the encryption datapath is enabled and the counter has its initial value,
+        -- we need to load the plaintext into the State register.                
+        mux_sel <= '1' when (round_counter_val = "00000" and ena = '1') else '0';
         
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -92,13 +96,8 @@ begin
                         dout => ciphertext
                 );
 
-        -- ciphertext register enable signal, must be activated when the
-        -- round_counter overflows to "00000". Since the output of the
-        -- round_counter is a signal, the value read from it is one cycle behind.
-        -- So the round_counter is found to be "00000", during the first round of
-        -- the next encryption cycle. So we need 31 cycles for the actual encryption
-        -- + 1 cycle to get the encrypted plaintext on the ciphertext output bus
-        with current_round_num select
+        -- ciphertext register enable signal, must be activated when the round counter overflows to "00000".
+        with round_counter_val select
                 ciph_enable <= '1' when "00000",
                 '0' when others;
 end structural;

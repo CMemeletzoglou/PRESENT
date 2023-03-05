@@ -3,13 +3,13 @@ use ieee.std_logic_1164.all;
 
 entity key_schedule_top is
         port (
-                clk        : in std_logic;
-                rst        : in std_logic;
-                ena        : in std_logic;
-                mode       : in std_logic; -- 0 for 80-bit mode, and 1 for 128-bit mode
-                current_round_num  : in std_logic_vector(4 downto 0);
-                input_key  : in std_logic_vector(127 downto 0);
-                output_key : out std_logic_vector(63 downto 0) -- output: round keys
+                clk               : in std_logic;
+                rst               : in std_logic;
+                ena               : in std_logic;
+                mode              : in std_logic; -- 0 for 80-bit mode, and 1 for 128-bit mode
+                round_counter_val : in std_logic_vector(4 downto 0);
+                input_key         : in std_logic_vector(127 downto 0);
+                output_key        : out std_logic_vector(63 downto 0) -- output: round keys
         );
 end entity key_schedule_top;
 
@@ -28,22 +28,22 @@ begin
 
         key_sched_80 : entity work.key_schedule_80
                 port map(
-                        clk           => clk,
-                        rst           => rst,
-                        ena           => ena_80bit,
-                        input_key     => input_key(79 downto 0),
-                        round_counter => current_round_num,
-                        output_key    => key_sched_80_out
+                        clk               => clk,
+                        rst               => rst,
+                        ena               => ena_80bit,
+                        input_key         => input_key(79 downto 0),
+                        round_counter_val => round_counter_val,
+                        output_key        => key_sched_80_out
                 );
 
         key_sched_128 : entity work.key_schedule_128
                 port map(
-                        clk           => clk,
-                        rst           => rst,
-                        ena           => ena_128bit,
-                        input_key     => input_key,
-                        round_counter => current_round_num,
-                        output_key    => key_sched_128_out
+                        clk               => clk,
+                        rst               => rst,
+                        ena               => ena_128bit,
+                        input_key         => input_key,
+                        round_counter_val => round_counter_val,
+                        output_key        => key_sched_128_out
                 );
 
         output_round_key_mux : entity work.mux
@@ -65,5 +65,5 @@ begin
                         inp  => round_key_mux_out,
                         ena  => (ena_80bit or ena_128bit),
                         outp => output_key
-                );        
+                );
 end architecture;

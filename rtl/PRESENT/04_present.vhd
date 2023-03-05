@@ -35,7 +35,7 @@ architecture rtl of present is
                 mem_wr_ena : std_logic;
 
         signal  cu_state  : STATE; -- remove this , debugging signal
-        signal gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
+        signal  gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
 
         signal  ciphertext,
                 plaintext : std_logic_vector(63 downto 0);
@@ -53,12 +53,12 @@ begin
         control_unit : entity work.present_control_unit
                 port map(
                         -- inputs
-                        clk        => clk,
-                        rst        => rst,
-                        ena        => ena,
-                        key_ena    => key_ena,
-                        mode_sel   => mode_sel,
-                        curr_round => current_round,
+                        clk               => clk,
+                        rst               => rst,
+                        ena               => ena,
+                        key_ena           => key_ena,
+                        mode_sel          => mode_sel,
+                        round_counter_val => current_round,
 
                         -- outputs
                         enc_ena       => enc_ena,
@@ -69,7 +69,7 @@ begin
                         counter_rst   => counter_rst,
                         counter_mode  => counter_mode,
 
-                        ready => ready,                       
+                        ready => ready,
 
                         -- debugging signals
                         cu_state  => cu_state,
@@ -100,9 +100,9 @@ begin
                         mode              => mode_sel(1),
                         input_key         => key,
                         output_key        => key_sched_out,
-                        current_round_num => current_round
+                        round_counter_val => current_round
                 );
-        
+
         -- this "-1" in the value of the round counter, is needed during the KEY_GEN phase, due to the
         -- 1 cycle delay introduced by the register in the output of the top-level key schedule module.
         -- However, when an Encryption or a Decryption starts, we don't actually need this "-1" logic,
@@ -111,15 +111,15 @@ begin
         -- mem_address <= std_logic_vector(unsigned(current_round) - 1) when (key_gen_finished = '0')
         --                 else current_round;
         -- mem_address <= std_logic_vector(unsigned(current_round) - 1);
-        
+
         mem_address_control_adder : entity work.prog_adder
-                generic map (
+                generic map(
                         DATA_WIDTH => 5
                 )
                 port map(
                         input_A => current_round,
                         input_B => "00001",
-                        mode => mem_address_mode,
+                        mode    => mem_address_mode,
                         out_val => mem_address
                 );
 
@@ -140,7 +140,7 @@ begin
                         ena               => enc_ena,
                         plaintext         => data_in,
                         round_key         => key_mem_out,
-                        current_round_num => current_round,
+                        round_counter_val => current_round,
                         ciphertext        => ciphertext
                 );
 
@@ -151,7 +151,7 @@ begin
                         ena               => dec_ena,
                         ciphertext        => data_in,
                         round_key         => key_mem_out,
-                        current_round_num => current_round,
+                        round_counter_val => current_round,
                         plaintext         => plaintext
                 );
 

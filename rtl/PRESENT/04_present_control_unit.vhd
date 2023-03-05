@@ -6,29 +6,29 @@ use work.state_pkg.all; -- for STATE type declaration
 
 entity present_control_unit is
         port (
-                clk             : in std_logic;
-                rst             : in std_logic; -- system-wide reset signal
-                ena             : in std_logic; -- system-wide enable signal
-                key_ena         : in std_logic; -- used as a key_load signal when high
-                mode_sel        : in std_logic_vector(1 downto 0);
-                curr_round      : in std_logic_vector(4 downto 0); -- current round from system-global round counter
+                clk               : in std_logic;
+                rst               : in std_logic; -- system-wide reset signal
+                ena               : in std_logic; -- system-wide enable signal
+                key_ena           : in std_logic; -- used as a key_load signal when high
+                mode_sel          : in std_logic_vector(1 downto 0);
+                round_counter_val : in std_logic_vector(4 downto 0); -- current round from system-global round counter
 
-                enc_ena         : out std_logic; -- encryption datapath enable
-                dec_ena         : out std_logic; -- decryption datapath enable
-                key_sched_ena   : out std_logic; -- top-level key schedule module enable
-                mem_wr_ena      : out std_logic; -- round keys memory write enable
-                counter_ena     : out std_logic; -- enable signal for the global round counter
-                counter_rst     : out std_logic; -- reset signal for the global round counter
-                counter_mode    : out std_logic;
-                ready           : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
+                enc_ena           : out std_logic; -- encryption datapath enable
+                dec_ena           : out std_logic; -- decryption datapath enable
+                key_sched_ena     : out std_logic; -- top-level key schedule module enable
+                mem_wr_ena        : out std_logic; -- round keys memory write enable
+                counter_ena       : out std_logic; -- enable signal for the global round counter
+                counter_rst       : out std_logic; -- reset signal for the global round counter
+                counter_mode      : out std_logic;
+                ready             : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
 
                 -- debugging signal, remove lated
-                cu_state        : out STATE;
-                gen_count       : out std_logic_vector(5 downto 0);
+                cu_state          : out STATE;
+                gen_count         : out std_logic_vector(5 downto 0);
 
                 -- test signal
-                key_gen_finished : out std_logic;
-                mem_address_mode : out std_logic
+                key_gen_finished  : out std_logic;
+                mem_address_mode  : out std_logic
         );
 end entity present_control_unit;
 
@@ -49,7 +49,7 @@ begin
                 end if;
         end process state_reg_proc;
 
-        next_state_logic : process (curr_state, ena, key_ena, mode_sel, curr_round)
+        next_state_logic : process (curr_state, ena, key_ena, mode_sel, round_counter_val)
                 variable key_gen_clock_cycles  : natural range 0 to 32;
                 variable operation_cycle_count : natural range 0 to 32;
         begin
@@ -80,13 +80,13 @@ begin
 
                         when KEY_GEN =>
                                 mem_wr_ena <= '1'; -- write enable for key storage  
-                                if (curr_round'event and key_gen_clock_cycles < 32) then                                        
+                                if (round_counter_val'event and key_gen_clock_cycles < 32) then
                                         key_gen_clock_cycles := key_gen_clock_cycles + 1;
                                         gen_count <= std_logic_vector(to_unsigned(key_gen_clock_cycles, 6));
                                 end if;
 
-                                if (key_gen_clock_cycles = 32) then                                        
-                                        next_state <= KEYS_READY;                                        
+                                if (key_gen_clock_cycles = 32) then
+                                        next_state <= KEYS_READY;
                                 end if;
 
                         when KEYS_READY =>
@@ -95,15 +95,15 @@ begin
 
                                 key_gen_finished <= '1';
 
-                                if (mode_sel(0) = '1') then             -- decryption mode
-                                        next_state  <= OP_DEC;
-                                        counter_rst <= '1';
-                                        counter_ena <= '0';                                        
+                                if (mode_sel(0) = '1') then -- decryption mode
+                                        next_state   <= OP_DEC;
+                                        counter_rst  <= '1';
+                                        counter_ena  <= '0';
                                         counter_mode <= '1'; -- count downwards
-                                elsif (mode_sel(0) = '0') then          -- encryption mode
-                                        next_state  <= OP_ENC;
-                                        counter_rst <= '1';
-                                        counter_ena <= '0'; 
+                                elsif (mode_sel(0) = '0') then -- encryption mode
+                                        next_state   <= OP_ENC;
+                                        counter_rst  <= '1';
+                                        counter_ena  <= '0';
                                         counter_mode <= '0'; -- count upwards                    
                                 else
                                         next_state <= INVALID;
@@ -118,7 +118,7 @@ begin
 
                                 mem_address_mode <= '1'; -- testing..
 
-                                if (curr_round'event and operation_cycle_count < 32) then
+                                if (round_counter_val'event and operation_cycle_count < 32) then
                                         operation_cycle_count := operation_cycle_count + 1;
                                 end if;
 
@@ -138,11 +138,11 @@ begin
 
                                 mem_address_mode <= '0'; -- testing..
 
-                                if (curr_round'event and operation_cycle_count < 32) then
+                                if (round_counter_val'event and operation_cycle_count < 32) then
                                         operation_cycle_count := operation_cycle_count + 1;
                                 end if;
 
-                                if (operation_cycle_count = 32) then                                        
+                                if (operation_cycle_count = 32) then
                                         dec_ena     <= '0';
                                         next_state  <= DONE;
                                         counter_rst <= '1';

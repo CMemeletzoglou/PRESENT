@@ -4,12 +4,12 @@ use ieee.numeric_std.all;
 
 entity key_schedule_128 is
         port (
-                clk           : in std_logic;
-                rst           : in std_logic;
-                ena           : in std_logic;
-                input_key     : in std_logic_vector(127 downto 0);
-                round_counter : in std_logic_vector(4 downto 0);
-                output_key    : out std_logic_vector(127 downto 0)
+                clk               : in std_logic;
+                rst               : in std_logic;
+                ena               : in std_logic;
+                input_key         : in std_logic_vector(127 downto 0);
+                round_counter_val : in std_logic_vector(4 downto 0);
+                output_key        : out std_logic_vector(127 downto 0)
         );
 end entity;
 
@@ -22,7 +22,7 @@ architecture structural of key_schedule_128 is
                 mux_out,
                 key_mux_out : std_logic_vector(127 downto 0);
 begin
-        mux_sel <= '1' when (round_counter = "00000" and ena = '1') else '0';
+        mux_sel <= '1' when (round_counter_val = "00000" and ena = '1') else '0';
 
         -- pass feedback from output register or input key at the very first round
         key_sched_input_mux : entity work.mux
@@ -50,7 +50,7 @@ begin
                         data_out => tmp(123 downto 120)
                 );
 
-        tmp(66 downto 62)  <= shifted_vec(66 downto 62) xor round_counter;
+        tmp(66 downto 62)  <= shifted_vec(66 downto 62) xor round_counter_val;
         tmp(119 downto 67) <= shifted_vec(119 downto 67);
         tmp(61 downto 0)   <= shifted_vec(61 downto 0);
 
