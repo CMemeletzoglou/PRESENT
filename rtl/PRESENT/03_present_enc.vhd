@@ -10,7 +10,6 @@ entity present_enc is
                 round_key         : in std_logic_vector(63 downto 0); -- read from round keys mem
                 current_round_num : in std_logic_vector(4 downto 0);
                 ciphertext        : out std_logic_vector(63 downto 0)
-                -- ready             : out std_logic
         );
 end present_enc;
 
@@ -102,18 +101,4 @@ begin
         with current_round_num select
                 ciph_enable <= '1' when "00000",
                 '0' when others;
-
-        -- when round_counter overflows to "00000", we are finished
-        -- so raise the finished flag, indicating that the contents of
-        -- the ciphertext output are valid and correspond to the 
-        -- encrypted plaintext. Compare the round_counter to "00001" and not to
-        -- "00000" as in the select statement above, in order to give the ciphertext
-        -- register, the necessary cycle to pass the ciphertext from its input to its 
-        -- output
-        -- with current_round_num select
-        --         ready <= '1' when "00001",
-        --         '0' when others;
-
-        -- small issue though.. the ready flag is also raised during the first encryption
-        -- process' second cycle (counter = 000001)
 end structural;

@@ -28,7 +28,8 @@ architecture structural of present_dec is
 begin
         -- control signal for the multiplexers controlling the input of
         -- State and Key registers
-        mux_sel <= '1' when (current_round_num = "00000") else '0';
+        -- mux_sel <= '1' when (current_round_num = "00000" and ena = '1') else '0';
+        mux_sel <= '1' when (current_round_num = "11111" and ena = '1') else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -100,19 +101,7 @@ begin
         -- the next decryption cycle. So we need 31 cycles for the actual decryption
         -- + 1 cycle to get the decrypted plaintext on the plaintext output bus
         with current_round_num select
-                plain_enable <= '1' when "00000",
+                -- plain_enable <= '1' when "00000",
+                plain_enable <= '1' when "11111",
                 '0' when others;
-
-        -- when round_counter overflows to "11111", we are finished
-        -- so raise the finished flag, indicating that the contents of
-        -- the plaintext output are valid and correspond to the 
-        -- decrypted plaintext. Compare the round_counter to "00001" and not to
-        -- "00000" as in the select statement above, in order to give the ciphertext
-        -- register, the necessary cycle to pass the ciphertext from its input to its 
-        -- output
-        -- with current_round_num select
-        --         ready <= '1' when "11111",
-        --         '0' when others;
-        -- small issue though.. the ready flag is also raised during the first decryption
-        -- process' second cycle (counter = 000001)
 end structural;

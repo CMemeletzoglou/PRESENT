@@ -20,28 +20,31 @@ end entity present;
 
 architecture rtl of present is
         signal  key_sched_out,
-                key_mem_out     : std_logic_vector(63 downto 0);
+                key_mem_out : std_logic_vector(63 downto 0);
 
-        signal  current_round   : std_logic_vector(4 downto 0);
+        signal  current_round : std_logic_vector(4 downto 0);
 
         signal  counter_ena,
                 counter_rst,
-                counter_mode    : std_logic;
+                counter_mode : std_logic;
 
         signal  enc_ena,
-                dec_ena         : std_logic;
+                dec_ena : std_logic;
 
         signal  key_sched_ena,
-                mem_wr_ena      : std_logic;
+                mem_wr_ena : std_logic;
 
-        signal cu_state : STATE; -- remove this , debugging signal
+        signal  cu_state  : STATE; -- remove this , debugging signal
         signal gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
 
-        signal ciphertext, plaintext : std_logic_vector(63 downto 0);
+        signal  ciphertext,
+                plaintext : std_logic_vector(63 downto 0);
 
-        signal mem_address : std_logic_vector(4 downto 0);
+        signal  mem_address : std_logic_vector(4 downto 0);
 
-        signal mux_sel : std_logic;
+        signal  mux_sel,
+                key_gen_finished,
+                mem_address_mode : std_logic;
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
@@ -66,10 +69,15 @@ begin
                         counter_rst   => counter_rst,
                         counter_mode  => counter_mode,
 
-                        ready         => ready,
+                        ready => ready,                       
 
-                        cu_state => cu_state,
-                        gen_count => gen_count
+                        -- debugging signals
+                        cu_state  => cu_state,
+                        gen_count => gen_count,
+
+                        -- testing signals
+                        key_gen_finished => key_gen_finished,
+                        mem_address_mode => mem_address_mode
                 );
 
         round_counter : entity work.counter
@@ -94,16 +102,35 @@ begin
                         output_key        => key_sched_out,
                         current_round_num => current_round
                 );
+        
+        -- this "-1" in the value of the round counter, is needed during the KEY_GEN phase, due to the
+        -- 1 cycle delay introduced by the register in the output of the top-level key schedule module.
+        -- However, when an Encryption or a Decryption starts, we don't actually need this "-1" logic,
+        -- since we then need to address the round keys memory, using the exact value of the round counter.
 
-        mem_address <= std_logic_vector(unsigned(current_round) - 1);
+        -- mem_address <= std_logic_vector(unsigned(current_round) - 1) when (key_gen_finished = '0')
+        --                 else current_round;
+        -- mem_address <= std_logic_vector(unsigned(current_round) - 1);
+        
+        mem_address_control_adder : entity work.prog_adder
+                generic map (
+                        DATA_WIDTH => 5
+                )
+                port map(
+                        input_A => current_round,
+                        input_B => "00001",
+                        mode => mem_address_mode,
+                        out_val => mem_address
+                );
+
         round_key_mem : entity work.key_mem
                 port map(
-                        clk       => clk,
+                        clk => clk,
                         -- addr      => current_round,
-                        addr      => mem_address,
-                        data_in   => key_sched_out,
-                        wr_ena    => mem_wr_ena,
-                        data_out  => key_mem_out
+                        addr     => mem_address,
+                        data_in  => key_sched_out,
+                        wr_ena   => mem_wr_ena,
+                        data_out => key_mem_out
                 );
 
         enc_dp : entity work.present_enc
@@ -113,8 +140,8 @@ begin
                         ena               => enc_ena,
                         plaintext         => data_in,
                         round_key         => key_mem_out,
-                        current_round_num => current_round,                        
-                        ciphertext  => ciphertext
+                        current_round_num => current_round,
+                        ciphertext        => ciphertext
                 );
 
         dec_dp : entity work.present_dec
@@ -124,19 +151,19 @@ begin
                         ena               => dec_ena,
                         ciphertext        => data_in,
                         round_key         => key_mem_out,
-                        current_round_num => current_round,                        
-                        plaintext => plaintext
+                        current_round_num => current_round,
+                        plaintext         => plaintext
                 );
-        
+
         -- mux that controls the output from the encryption and decryption cores
-        out_mux : entity work.mux             
+        out_mux : entity work.mux
                 generic map(
                         DATA_WIDTH => 64
                 )
                 port map(
                         input_A => ciphertext,
                         input_B => plaintext,
-                        sel => mux_sel,
+                        sel     => mux_sel,
                         mux_out => data_out
                 );
 end architecture;

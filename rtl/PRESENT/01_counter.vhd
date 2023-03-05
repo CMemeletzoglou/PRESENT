@@ -22,10 +22,12 @@ begin
                 variable count_step : integer;
         begin
                 if (rst = '1') then
-                        curr_count <= (others => '0');
+                        -- curr_count <= (others => '0');
                         if (updown = '0') then
+                                curr_count <= (others => '0');
                                 count_step := 1;
                         elsif (updown = '1') then
+                                curr_count <= (others => '1');
                                 count_step := -1;
                         end if;
                 elsif (ena = '1') then
