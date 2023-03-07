@@ -42,8 +42,7 @@ architecture rtl of present is
 
         signal mem_address : std_logic_vector(4 downto 0);
 
-        signal  mux_sel,
-                key_gen_finished,
+        signal  mux_sel,                
                 mem_address_mode,
                 out_ena : std_logic;
 begin
@@ -78,9 +77,7 @@ begin
                         -- debugging signals
                         cu_state  => cu_state,
                         gen_count => gen_count,
-
-                        -- testing signals
-                        key_gen_finished => key_gen_finished,
+                        
                         mem_address_mode => mem_address_mode
                 );
 
@@ -112,10 +109,7 @@ begin
         -- However, when an Encryption or a Decryption starts, we don't actually need this "-1" logic,
         -- since we then need to address the round keys memory, using the exact value of the round counter.
 
-        -- mem_address <= std_logic_vector(unsigned(current_round) - 1) when (key_gen_finished = '0')
-        --                 else current_round;
         -- mem_address <= std_logic_vector(unsigned(current_round) - 1);
-
         mem_address_control_adder : entity work.prog_adder
                 generic map(
                         DATA_WIDTH => 5

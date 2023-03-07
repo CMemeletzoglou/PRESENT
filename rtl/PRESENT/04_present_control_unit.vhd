@@ -27,8 +27,6 @@ entity present_control_unit is
                 cu_state          : out STATE;
                 gen_count         : out std_logic_vector(5 downto 0);
 
-                -- test signal
-                key_gen_finished  : out std_logic;
                 mem_address_mode  : out std_logic
         );
 end entity present_control_unit;
@@ -63,8 +61,7 @@ begin
                                 key_gen_clock_cycles  := 0;
                                 operation_cycle_count := 0;
                                 next_state <= INIT;
-
-                                key_gen_finished <= '0';
+                                
                                 mem_address_mode <= '1';
                                 out_ena          <= '0';
 
@@ -95,8 +92,6 @@ begin
                                 key_sched_ena <= '0';
                                 mem_wr_ena    <= '0';
 
-                                key_gen_finished <= '1';
-
                                 if (mode_sel(0) = '1') then -- decryption mode
                                         next_state   <= OP_DEC;
                                         counter_rst  <= '1';
@@ -118,7 +113,7 @@ begin
                                 counter_rst <= '0';
                                 counter_ena <= '1';
 
-                                mem_address_mode <= '1'; -- testing..
+                                mem_address_mode <= '1';
 
                                 if (round_counter_val'event and operation_cycle_count < 32) then
                                         operation_cycle_count := operation_cycle_count + 1;
@@ -139,7 +134,7 @@ begin
                                 counter_rst <= '0';
                                 counter_ena <= '1';
 
-                                mem_address_mode <= '0'; -- testing..
+                                mem_address_mode <= '0';
 
                                 if (round_counter_val'event and operation_cycle_count < 32) then
                                         operation_cycle_count := operation_cycle_count + 1;
