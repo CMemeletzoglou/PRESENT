@@ -188,7 +188,23 @@ begin
 
                         when DONE =>
                                 ready      <= '1';
-                                next_state <= DONE;
+                                operation_clock_cycles := 0;
+                                out_ena <= '0';
+
+                                -- start a new encryption decryption
+                                if (mode_sel(0) = '0') then -- start encryption
+                                        next_state <= OP_ENC;
+                                        prev_round_counter_val := b"00000";
+                                        counter_mode <= '0';
+                                        ready <= '0';
+                                elsif (mode_sel(0) = '1') then
+                                        next_state <= OP_DEC;
+                                        prev_round_counter_val := b"11111";
+                                        counter_mode <= '1';
+                                        ready <= '0';
+                                else 
+                                        next_state <= DONE;
+                                end if;
 
                         when INVALID =>
                                 next_state <= INVALID;
