@@ -12,9 +12,9 @@ entity present_control_unit is
                 key_ena           : in std_logic; -- used as a key_load signal when high
                 mode_sel          : in std_logic_vector(1 downto 0);
                 round_counter_val : in std_logic_vector(4 downto 0); -- current round from system-global round counter
-
                 enc_ena           : out std_logic; -- encryption datapath enable
                 dec_ena           : out std_logic; -- decryption datapath enable
+                out_ena           : out std_logic; -- new signal to allow the encryption datapath to write on the shared data_out bus
                 key_sched_ena     : out std_logic; -- top-level key schedule module enable
                 mem_wr_ena        : out std_logic; -- round keys memory write enable
                 counter_ena       : out std_logic; -- enable signal for the global round counter
@@ -22,7 +22,7 @@ entity present_control_unit is
                 counter_mode      : out std_logic;
                 ready             : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
 
-                -- debugging signal, remove lated
+                -- debugging signal, remove later
                 cu_state          : out STATE;
                 gen_count         : out std_logic_vector(5 downto 0);
 
@@ -65,6 +65,7 @@ begin
 
                                 key_gen_finished <= '0';
                                 mem_address_mode <= '1';
+                                out_ena <= '0';
 
                         when INIT =>
                                 if (ena = '1' and key_ena = '1') then
@@ -127,6 +128,7 @@ begin
                                         next_state  <= DONE;
                                         counter_rst <= '1';
                                         counter_ena <= '0';
+                                        out_ena <= '1';
                                 end if;
 
                         when OP_DEC =>
@@ -147,6 +149,7 @@ begin
                                         next_state  <= DONE;
                                         counter_rst <= '1';
                                         counter_ena <= '0';
+                                        out_ena <= '1';
                                 end if;
 
                         when DONE =>

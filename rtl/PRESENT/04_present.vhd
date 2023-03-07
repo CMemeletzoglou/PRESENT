@@ -44,7 +44,8 @@ architecture rtl of present is
 
         signal  mux_sel,
                 key_gen_finished,
-                mem_address_mode : std_logic;
+                mem_address_mode,
+                out_ena : std_logic;
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
@@ -63,6 +64,9 @@ begin
                         -- outputs
                         enc_ena       => enc_ena,
                         dec_ena       => dec_ena,
+
+                        out_ena   => out_ena,
+
                         key_sched_ena => key_sched_ena,
                         mem_wr_ena    => mem_wr_ena,
                         counter_ena   => counter_ena,
@@ -138,6 +142,7 @@ begin
                         clk               => clk,
                         rst               => rst,
                         ena               => enc_ena,
+                        out_ena           => out_ena,
                         plaintext         => data_in,
                         round_key         => key_mem_out,
                         round_counter_val => current_round,
@@ -149,6 +154,7 @@ begin
                         clk               => clk,
                         rst               => rst,
                         ena               => dec_ena,
+                        out_ena           => out_ena,
                         ciphertext        => data_in,
                         round_key         => key_mem_out,
                         round_counter_val => current_round,
