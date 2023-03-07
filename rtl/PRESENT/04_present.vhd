@@ -34,13 +34,13 @@ architecture rtl of present is
         signal  key_sched_ena,
                 mem_wr_ena : std_logic;
 
-        signal  cu_state  : STATE; -- remove this , debugging signal
-        signal  gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
+        signal cu_state  : STATE; -- remove this , debugging signal
+        signal gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
 
         signal  ciphertext,
                 plaintext : std_logic_vector(63 downto 0);
 
-        signal  mem_address : std_logic_vector(4 downto 0);
+        signal mem_address : std_logic_vector(4 downto 0);
 
         signal  mux_sel,
                 key_gen_finished,
@@ -62,10 +62,10 @@ begin
                         round_counter_val => current_round,
 
                         -- outputs
-                        enc_ena       => enc_ena,
-                        dec_ena       => dec_ena,
+                        enc_ena => enc_ena,
+                        dec_ena => dec_ena,
 
-                        out_ena   => out_ena,
+                        out_ena => out_ena,
 
                         key_sched_ena => key_sched_ena,
                         mem_wr_ena    => mem_wr_ena,

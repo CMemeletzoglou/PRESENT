@@ -96,7 +96,7 @@ begin
                         din  => inv_pbox_layer_input,
                         dout => plaintext
                 );
-        
+
         -- The plaintext register enable signal, must be activated when the round counter underflows to "11111", which
         -- happens both at the first cycle of a decryption operation (in a decryption operation, the round counter counts downwards
         -- in order to retrieve the round keys from the round keys memory, in a reversed order which corresponds to an inverse key schedule),

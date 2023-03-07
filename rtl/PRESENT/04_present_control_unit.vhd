@@ -12,6 +12,7 @@ entity present_control_unit is
                 key_ena           : in std_logic; -- used as a key_load signal when high
                 mode_sel          : in std_logic_vector(1 downto 0);
                 round_counter_val : in std_logic_vector(4 downto 0); -- current round from system-global round counter
+
                 enc_ena           : out std_logic; -- encryption datapath enable
                 dec_ena           : out std_logic; -- decryption datapath enable
                 out_ena           : out std_logic; -- new signal to allow the encryption datapath to write on the shared data_out bus
@@ -65,7 +66,7 @@ begin
 
                                 key_gen_finished <= '0';
                                 mem_address_mode <= '1';
-                                out_ena <= '0';
+                                out_ena          <= '0';
 
                         when INIT =>
                                 if (ena = '1' and key_ena = '1') then
@@ -128,7 +129,7 @@ begin
                                         next_state  <= DONE;
                                         counter_rst <= '1';
                                         counter_ena <= '0';
-                                        out_ena <= '1';
+                                        out_ena     <= '1';
                                 end if;
 
                         when OP_DEC =>
@@ -149,7 +150,7 @@ begin
                                         next_state  <= DONE;
                                         counter_rst <= '1';
                                         counter_ena <= '0';
-                                        out_ena <= '1';
+                                        out_ena     <= '1';
                                 end if;
 
                         when DONE =>

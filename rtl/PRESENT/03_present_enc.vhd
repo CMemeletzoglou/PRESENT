@@ -25,7 +25,7 @@ architecture structural of present_enc is
 
         signal  sbox_layer_input,
                 pbox_layer_input,
-                pbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);        
+                pbox_layer_out : std_logic_vector(BLOCK_SIZE - 1 downto 0);
 begin
         -- Control signal for the multiplexer controlling the input of the State register
         -- When encrypting, the round counter is counting upwards starting from "00000".
@@ -33,7 +33,7 @@ begin
         -- Thus, when the encryption datapath is enabled and the counter has its initial value,
         -- we need to load the plaintext into the State register.                
         mux_sel <= '1' when (round_counter_val = "00000" and ena = '1') else '0';
-        
+
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
                 generic map(
@@ -66,7 +66,7 @@ begin
                 )
                 port map(
                         a => state,
-                        b => round_key,                        
+                        b => round_key,
                         y => sbox_layer_input
                 );
 
