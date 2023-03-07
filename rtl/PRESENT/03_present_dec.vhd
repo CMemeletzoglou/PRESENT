@@ -101,7 +101,7 @@ begin
         -- happens both at the first cycle of a decryption operation (in a decryption operation, the round counter counts downwards
         -- in order to retrieve the round keys from the round keys memory, in a reversed order which corresponds to an inverse key schedule),
         -- but also after the end of a decryption operation.
-        -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the shared
-        -- data_out coprocessor-global bus, when a decryption operation has finished.
+        -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the
+        -- shared, coprocessor-global data_out bus, when a decryption operation has finished.
         plain_enable <= '1' when (round_counter_val = "11111" and out_ena = '1') else '0';
 end structural;

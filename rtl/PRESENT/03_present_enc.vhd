@@ -99,7 +99,7 @@ begin
 
         -- The ciphertext register enable signal, must be activated when the round counter overflows to "00000", which
         -- happens both at the first cycle of an encryption operation, but also after the end of an encryption operation.
-        -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the shared
-        -- data_out coprocessor-global bus, when an encryption operation has finished.        
+        -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the 
+        -- shared, coprocessor-global data_out bus, when an encryption operation has finished.        
         ciph_enable <= '1' when (round_counter_val = "00000" and out_ena = '1') else '0';
 end structural;
