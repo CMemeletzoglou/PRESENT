@@ -24,8 +24,7 @@ entity present_control_unit is
                 ready             : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
 
                 -- debugging signal, remove later
-                cu_state          : out STATE;
-                gen_count         : out std_logic_vector(5 downto 0);
+                cu_state          : out STATE;                
 
                 mem_address_mode  : out std_logic
         );
@@ -37,7 +36,7 @@ begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
 
-        cu_state <= curr_state;
+        cu_state <= curr_state; -- debugging signal
 
         state_reg_proc : process (clk, rst, ena)
         begin
@@ -49,8 +48,26 @@ begin
         end process state_reg_proc;
 
         next_state_logic : process (curr_state, ena, key_ena, mode_sel, round_counter_val)
+                -- The following helper variables have 33 possible values, due to their usage in the KEY_GEN phase
+                -- and the OP_ENC/OP_DEC phases, respectively, where there is one clock cycle delay introduced by
+                -- certain registers in the involved submodules. Specifically :
+                --                 
+                --   a) key_gen_clock_cycles : this variable is used during the KEY_GEN phase, where 
+                --      (32 + 1) clock cycles are needed in order to generate the 32 keys, due to the one clock
+                --      cycle delay introduced by the output register of the top-level key schedule module.
+                --      
+                --   b) operation_clock_cycles : this variable is used during the OP_ENC/OP_DEC phases, where
+                --      32 cycles are needed for the actual encryption/decryption operation (since there are 32
+                --      round keys), plus one cycle due to the one clock cycle delay introduced by the state and
+                --      output registers of the encryption/decryption datapaths.
                 variable key_gen_clock_cycles  : natural range 0 to 32;
-                variable operation_cycle_count : natural range 0 to 32;
+                variable operation_clock_cycles : natural range 0 to 32;
+                
+                -- Helper variable to store the previous value of the round counter, in order to compare it
+                -- with the current one (round_counter_val input signal).
+                -- This way, we implement the logic of the "round_counter_val'event" check, but without
+                -- using the event attribute on the std_logic_vector, which poses a non-synthesizable solution.                
+                variable prev_round_counter_val : unsigned(4 downto 0);
         begin
                 case curr_state is
                         when RESET =>
@@ -59,7 +76,7 @@ begin
                                 counter_ena  <= '0';
                                 ready        <= '0';
                                 key_gen_clock_cycles  := 0;
-                                operation_cycle_count := 0;
+                                operation_clock_cycles := 0;
                                 next_state <= INIT;
                                 
                                 mem_address_mode <= '1';
@@ -72,6 +89,8 @@ begin
                                                 counter_rst   <= '0';
                                                 counter_ena   <= '1'; -- start the counter
                                                 key_sched_ena <= '1';
+
+                                                prev_round_counter_val := "00000";
                                         else
                                                 next_state <= INVALID;
                                         end if;
@@ -79,9 +98,14 @@ begin
 
                         when KEY_GEN =>
                                 mem_wr_ena <= '1'; -- write enable for key storage  
-                                if (round_counter_val'event and key_gen_clock_cycles < 32) then
-                                        key_gen_clock_cycles := key_gen_clock_cycles + 1;
-                                        gen_count <= std_logic_vector(to_unsigned(key_gen_clock_cycles, 6));
+                                
+                                -- check for a change in the value of the round counter, without using the event attribute
+                                -- if (round_counter_val'event and key_gen_clock_cycles < 32) then
+                                if (unsigned(round_counter_val) /= prev_round_counter_val and key_gen_clock_cycles < 32) then
+                                        key_gen_clock_cycles := key_gen_clock_cycles + 1;  
+                                        
+                                        -- the current value of the round counter is the next previous one
+                                        prev_round_counter_val := unsigned(round_counter_val); 
                                 end if;
 
                                 if (key_gen_clock_cycles = 32) then
@@ -92,16 +116,20 @@ begin
                                 key_sched_ena <= '0';
                                 mem_wr_ena    <= '0';
 
-                                if (mode_sel(0) = '1') then -- decryption mode
+                                if (mode_sel(0) = '1') then     -- decryption mode
                                         next_state   <= OP_DEC;
                                         counter_rst  <= '1';
                                         counter_ena  <= '0';
-                                        counter_mode <= '1'; -- count downwards
-                                elsif (mode_sel(0) = '0') then -- encryption mode
+                                        counter_mode <= '1';    -- count downwards
+
+                                        prev_round_counter_val := "11111";
+                                elsif (mode_sel(0) = '0') then  -- encryption mode
                                         next_state   <= OP_ENC;
                                         counter_rst  <= '1';
                                         counter_ena  <= '0';
-                                        counter_mode <= '0'; -- count upwards                    
+                                        counter_mode <= '0';    -- count upwards     
+
+                                        prev_round_counter_val := "00000";
                                 else
                                         next_state <= INVALID;
                                 end if;
@@ -115,11 +143,16 @@ begin
 
                                 mem_address_mode <= '1';
 
-                                if (round_counter_val'event and operation_cycle_count < 32) then
-                                        operation_cycle_count := operation_cycle_count + 1;
+                                -- check for a change in the value of the round counter, without using the event attribute
+                                -- if (round_counter_val'event and operation_clock_cycles < 32) then
+                                if (unsigned(round_counter_val) /= prev_round_counter_val and operation_clock_cycles < 32) then
+                                        operation_clock_cycles := operation_clock_cycles + 1;
+
+                                        -- the current value of the round counter is the next previous one
+                                        prev_round_counter_val := unsigned(round_counter_val);
                                 end if;
 
-                                if (operation_cycle_count = 32) then
+                                if (operation_clock_cycles = 32) then
                                         enc_ena     <= '0';
                                         next_state  <= DONE;
                                         counter_rst <= '1';
@@ -136,11 +169,16 @@ begin
 
                                 mem_address_mode <= '0';
 
-                                if (round_counter_val'event and operation_cycle_count < 32) then
-                                        operation_cycle_count := operation_cycle_count + 1;
-                                end if;
+                                -- check for a change in the value of the round counter, without using the event attribute
+                                -- if (round_counter_val'event and operation_clock_cycles < 32) then
+                                if (unsigned(round_counter_val) /= prev_round_counter_val and operation_clock_cycles < 32) then
+                                        operation_clock_cycles := operation_clock_cycles + 1;
 
-                                if (operation_cycle_count = 32) then
+                                        -- the current value of the round counter is the next previous one
+                                        prev_round_counter_val := unsigned(round_counter_val);
+                                end if;                                        
+
+                                if (operation_clock_cycles = 32) then
                                         dec_ena     <= '0';
                                         next_state  <= DONE;
                                         counter_rst <= '1';

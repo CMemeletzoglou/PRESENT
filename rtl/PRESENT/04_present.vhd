@@ -34,8 +34,7 @@ architecture rtl of present is
         signal  key_sched_ena,
                 mem_wr_ena : std_logic;
 
-        signal cu_state  : STATE; -- remove this , debugging signal
-        signal gen_count : std_logic_vector(5 downto 0); -- remove this , debugging signal
+        signal cu_state  : STATE; -- remove this , debugging signal       
 
         signal  ciphertext,
                 plaintext : std_logic_vector(63 downto 0);
@@ -76,7 +75,6 @@ begin
 
                         -- debugging signals
                         cu_state  => cu_state,
-                        gen_count => gen_count,
                         
                         mem_address_mode => mem_address_mode
                 );
