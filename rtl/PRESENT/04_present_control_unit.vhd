@@ -41,7 +41,7 @@ begin
         state_reg_proc : process (clk, rst, ena)
         begin
                 if (rst = '1') then
-                        curr_state <= RESET;
+                        curr_state <= INIT;
                 elsif (ena = '1' and rising_edge(clk)) then
                         curr_state <= next_state; -- curr_state stored in register of width log2(#states)
                 end if;
@@ -70,20 +70,20 @@ begin
                 variable prev_round_counter_val : unsigned(4 downto 0);
         begin
                 case curr_state is
-                        when RESET =>
-                                counter_rst  <= '1';
-                                counter_mode <= '0'; -- counter counts upwards to store generated keys
-                                counter_ena  <= '0';
-                                ready        <= '0';
-                                key_gen_clock_cycles  := 0;
-                                operation_clock_cycles := 0;
-                                next_state <= INIT;
-                                
-                                mem_address_mode <= '1';
-                                out_ena          <= '0';
-
                         when INIT =>
-                                if (ena = '1' and key_ena = '1') then
+                                if (rst = '1') then -- while rst is high stay in the "reset" state
+                                        next_state <= INIT;
+                                        counter_rst  <= '1';
+                                        counter_mode <= '0'; -- counter counts upwards to store generated keys
+                                        counter_ena  <= '0';
+                                        ready        <= '0';
+                                        key_gen_clock_cycles  := 0;
+                                        operation_clock_cycles := 0;
+                                                                        
+                                        mem_address_mode <= '1';
+                                        out_ena          <= '0';
+
+                                elsif (ena = '1' and key_ena = '1') then
                                         if (mode_sel(1) = '0' or mode_sel(1) = '1') then
                                                 next_state    <= KEY_GEN;
                                                 counter_rst   <= '0';
@@ -109,38 +109,35 @@ begin
                                 end if;
 
                                 if (key_gen_clock_cycles = 32) then
-                                        next_state <= KEYS_READY;
-                                end if;
+                                        if (mode_sel(0) = '1') then     -- decryption mode
+                                                next_state   <= OP_DEC;
+                                                counter_rst  <= '1';
+                                                counter_mode <= '1';    -- count downwards
+                                                counter_ena  <= '0';
+                                                prev_round_counter_val := "11111";
 
-                        when KEYS_READY =>
-                                key_sched_ena <= '0';
-                                mem_wr_ena    <= '0';
-
-                                if (mode_sel(0) = '1') then     -- decryption mode
-                                        next_state   <= OP_DEC;
-                                        counter_rst  <= '1';
-                                        counter_ena  <= '0';
-                                        counter_mode <= '1';    -- count downwards
-
-                                        prev_round_counter_val := "11111";
-                                elsif (mode_sel(0) = '0') then  -- encryption mode
-                                        next_state   <= OP_ENC;
-                                        counter_rst  <= '1';
-                                        counter_ena  <= '0';
-                                        counter_mode <= '0';    -- count upwards     
-
-                                        prev_round_counter_val := "00000";
-                                else
-                                        next_state <= INVALID;
+                                        elsif (mode_sel(0) = '0') then  -- encryption mode
+                                                next_state   <= OP_ENC;
+                                                counter_rst  <= '1';
+                                                counter_mode <= '0';    -- count upwards     
+                                                counter_ena  <= '0';
+                                                prev_round_counter_val := "00000";
+                                        else
+                                                next_state <= INVALID;
+                                        end if;
                                 end if;
 
                         when OP_ENC =>
+                                key_sched_ena <= '0';
+                                mem_wr_ena    <= '0';
+                                
                                 enc_ena <= '1';
                                 dec_ena <= '0';
 
                                 counter_rst <= '0';
                                 counter_ena <= '1';
-
+                                
+                                ready <= '0';
                                 mem_address_mode <= '1';
 
                                 -- check for a change in the value of the round counter, without using the event attribute
@@ -153,20 +150,24 @@ begin
                                 end if;
 
                                 if (operation_clock_cycles = 32) then
-                                        enc_ena     <= '0';
                                         next_state  <= DONE;
+                                        enc_ena     <= '0';
                                         counter_rst <= '1';
                                         counter_ena <= '0';
                                         out_ena     <= '1';
                                 end if;
 
                         when OP_DEC =>
+                                key_sched_ena <= '0';
+                                mem_wr_ena    <= '0';
+
                                 dec_ena <= '1';
                                 enc_ena <= '0';
 
                                 counter_rst <= '0';
                                 counter_ena <= '1';
 
+                                ready <= '0';
                                 mem_address_mode <= '0';
 
                                 -- check for a change in the value of the round counter, without using the event attribute
@@ -179,8 +180,8 @@ begin
                                 end if;                                        
 
                                 if (operation_clock_cycles = 32) then
-                                        dec_ena     <= '0';
                                         next_state  <= DONE;
+                                        dec_ena     <= '0';
                                         counter_rst <= '1';
                                         counter_ena <= '0';
                                         out_ena     <= '1';
@@ -196,12 +197,10 @@ begin
                                         next_state <= OP_ENC;
                                         prev_round_counter_val := b"00000";
                                         counter_mode <= '0';
-                                        ready <= '0';
                                 elsif (mode_sel(0) = '1') then
                                         next_state <= OP_DEC;
                                         prev_round_counter_val := b"11111";
                                         counter_mode <= '1';
-                                        ready <= '0';
                                 else 
                                         next_state <= DONE;
                                 end if;
