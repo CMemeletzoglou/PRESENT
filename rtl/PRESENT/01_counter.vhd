@@ -30,10 +30,12 @@ begin
                                 curr_count <= (others => '1');
                                 count_step := -1;
                         end if;
-                elsif (ena = '1') then
+                elsif (rst = '0') then
                         if rising_edge(clk) then
-                                -- up/down functionality
-                                curr_count <= curr_count + count_step;
+                                if (ena = '1') then
+                                        -- up/down functionality
+                                        curr_count <= curr_count + count_step;
+                                end if;
                         end if;
                 end if;
         end process;
