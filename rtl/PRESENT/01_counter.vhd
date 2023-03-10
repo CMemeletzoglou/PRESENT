@@ -18,23 +18,22 @@ end counter;
 architecture behavioral of counter is
         signal curr_count : unsigned(COUNTER_WIDTH - 1 downto 0) := (others => '0');
 begin
-        process (clk, rst, ena, updown) -- asynchronous reset
-                variable count_step : integer;
+        process (clk, rst, ena, updown) -- asynchronous reset                
         begin
                 if (rst = '1') then
-                        -- curr_count <= (others => '0');
                         if (updown = '0') then
                                 curr_count <= (others => '0');
-                                count_step := 1;
                         elsif (updown = '1') then
                                 curr_count <= (others => '1');
-                                count_step := -1;
                         end if;
                 elsif (rst = '0') then
                         if rising_edge(clk) then
                                 if (ena = '1') then
-                                        -- up/down functionality
-                                        curr_count <= curr_count + count_step;
+                                        if (updown = '0') then -- count upwards
+                                                curr_count <= curr_count + 1;
+                                        elsif (updown = '1') then -- count downwards
+                                                curr_count <= curr_count - 1;
+                                        end if;                                        
                                 end if;
                         end if;
                 end if;
