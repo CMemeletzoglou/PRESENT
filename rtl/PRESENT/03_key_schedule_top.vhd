@@ -15,7 +15,8 @@ end entity key_schedule_top;
 
 architecture structural of key_schedule_top is
         signal  ena_80bit,
-                ena_128bit : std_logic;
+                ena_128bit,
+                tristate_buf_ena : std_logic;
 
         signal  key_sched_80_out : std_logic_vector(79 downto 0);
 
@@ -24,7 +25,7 @@ architecture structural of key_schedule_top is
         signal  round_key_mux_out : std_logic_vector(63 downto 0);
 begin
         ena_80bit  <= '1' when (mode = '0' and ena = '1') else '0';
-        ena_128bit <= '0' xor (not ena_80bit and ena);
+        ena_128bit <= '0' xor (not ena_80bit and ena);        
 
         key_sched_80 : entity work.key_schedule_80
                 port map(
@@ -57,13 +58,15 @@ begin
                         mux_out => round_key_mux_out
                 );
 
+        tristate_buf_ena <= ena_80bit or ena_128bit;
+        
         output_key_tri_buf : entity work.tristate_buffer
                 generic map(
                         NUM_BITS => 64
                 )
                 port map(
                         inp  => round_key_mux_out,
-                        ena  => (ena_80bit or ena_128bit),
+                        ena  => tristate_buf_ena,
                         outp => output_key
                 );
 end architecture;
