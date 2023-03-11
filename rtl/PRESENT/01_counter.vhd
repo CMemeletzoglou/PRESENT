@@ -21,11 +21,12 @@ begin
         process (clk, rst, ena, updown) -- asynchronous reset                
         begin
                 if (rst = '1') then
-                        if (updown = '0') then
-                                curr_count <= (others => '0');
-                        elsif (updown = '1') then
-                                curr_count <= (others => '1');
-                        end if;
+                        curr_count <= (others => '0');
+--                         if (updown = '0') then
+--                                 curr_count <= (others => '0');
+--                         elsif (updown = '1') then
+--                                 curr_count <= (others => '1');
+--                         end if;
                 elsif (rst = '0') then
                         if rising_edge(clk) then
                                 if (ena = '1') then
