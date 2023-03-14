@@ -66,10 +66,20 @@ begin
                 
                 ena <= '1';
                 key_ena <= '1';
-                mode_sel <= b"10";
+                mode_sel <= b"10"; -- encryption
                 key <= x"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
                 data_in <= x"FFFFFFFFFFFFFFFF";
 
+                -- wait for keygen to finish, that is 32 cycles
+                wait for 32 * clk_period;
+
+                -- wait for decryption to finish, that is 34 cycles -> we then are in DONE
+                -- but we need to wait for one more clock cycle.
+                wait for 34 * clk_period;
+                wait for clk_period/2;
+
+                mode_sel <= b"11";
+                data_in <= x"628d9fbd4218e5b4";
 
                 wait; -- halt the simulation
         end process stimuli_proc;
