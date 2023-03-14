@@ -6,10 +6,10 @@ entity present_dec is
                 clk               : in std_logic;
                 rst               : in std_logic;
                 ena               : in std_logic;
+                load_ena          : in std_logic;
                 out_ena           : in std_logic; -- output enable signal received from the Control Unit
                 ciphertext        : in std_logic_vector(63 downto 0);
                 round_key         : in std_logic_vector(63 downto 0);
-                round_counter_val : in std_logic_vector(4 downto 0);
                 plaintext         : out std_logic_vector(63 downto 0)
         );
 end present_dec;
@@ -32,7 +32,7 @@ begin
         -- We need to fetch the round keys from the round keys memory, in a reversed order.
         -- Thus, when the decryption datapath is enabled and the counter has its initial value,
         -- we need to load the ciphertext into the State register.        
-        mux_sel <= '1' when (round_counter_val = "11111" and ena = '1') else '0';
+        mux_sel <= '1' when (load_ena = '1' and ena = '1') else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -92,7 +92,8 @@ begin
                 port map(
                         clk  => clk,
                         rst  => rst,
-                        ena  => plain_enable,
+                        -- ena  => plain_enable,
+                        ena  => out_ena,
                         din  => inv_pbox_layer_input,
                         dout => plaintext
                 );
@@ -103,5 +104,7 @@ begin
         -- but also after the end of a decryption operation.
         -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the
         -- shared, coprocessor-global data_out bus, when a decryption operation has finished.
-        plain_enable <= '1' when (round_counter_val = "11111" and out_ena = '1') else '0';
+        -- plain_enable <= '1' when (round_counter_val = "11111" and out_ena = '1') else '0';
+        
+        -- plain_enable <= '1' when (ena = '1' and out_ena = '1') else '0';
 end structural;

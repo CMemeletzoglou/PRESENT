@@ -3,14 +3,14 @@ use ieee.std_logic_1164.all;
 
 entity present_enc is
         port (
-                clk               : in std_logic;
-                rst               : in std_logic;
-                ena               : in std_logic;
-                out_ena           : in std_logic; -- output enable signal received from the Control Unit
-                plaintext         : in std_logic_vector(63 downto 0);
-                round_key         : in std_logic_vector(63 downto 0); -- read from round keys mem
-                round_counter_val : in std_logic_vector(4 downto 0);
-                ciphertext        : out std_logic_vector(63 downto 0)
+                clk        : in std_logic;
+                rst        : in std_logic;
+                ena        : in std_logic;
+                load_ena   : in std_logic;
+                out_ena    : in std_logic; -- output enable signal received from the Control Unit
+                plaintext  : in std_logic_vector(63 downto 0);
+                round_key  : in std_logic_vector(63 downto 0); -- read from round keys mem
+                ciphertext : out std_logic_vector(63 downto 0)
         );
 end present_enc;
 
@@ -32,7 +32,7 @@ begin
         -- We need to fetch the round keys from the round keys memory.
         -- Thus, when the encryption datapath is enabled and the counter has its initial value,
         -- we need to load the plaintext into the State register.                
-        mux_sel <= '1' when (round_counter_val = "00000" and ena = '1') else '0';
+        mux_sel <= '1' when (load_ena = '1' and ena = '1') else '0';
 
         -- 64-bit mux which drives the state register
         state_reg_mux : entity work.mux
@@ -90,9 +90,10 @@ begin
                         DATA_WIDTH => BLOCK_SIZE
                 )
                 port map(
-                        clk  => clk,
-                        rst  => rst,
-                        ena  => ciph_enable,
+                        clk => clk,
+                        rst => rst,
+                        -- ena  => ciph_enable,
+                        ena  => out_ena,
                         din  => sbox_layer_input,
                         dout => ciphertext
                 );
@@ -101,5 +102,7 @@ begin
         -- happens both at the first cycle of an encryption operation, but also after the end of an encryption operation.
         -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the 
         -- shared, coprocessor-global data_out bus, when an encryption operation has finished.        
-        ciph_enable <= '1' when (round_counter_val = "00000" and out_ena = '1') else '0';
+        -- ciph_enable <= '1' when (round_counter_val = "00000" and out_ena = '1') else '0';
+
+        -- ciph_enable <= '1' when (ena = '1' and out_ena = '1') else '0';
 end structural;
