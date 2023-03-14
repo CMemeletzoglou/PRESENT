@@ -34,16 +34,18 @@ architecture rtl of present is
         signal  key_sched_ena,
                 mem_wr_ena : std_logic;
 
-        signal cu_state  : STATE; -- remove this , debugging signal       
+        signal  cu_state : STATE; -- remove this , debugging signal       
 
         signal  ciphertext,
                 plaintext : std_logic_vector(63 downto 0);
 
-        signal mem_address : std_logic_vector(4 downto 0);
+        signal  mem_address,
+                tmp : std_logic_vector(4 downto 0);
 
-        signal  mux_sel,                
+        signal  mux_sel,
                 mem_address_mode,
-                out_ena : std_logic;
+                out_ena,
+                load_ena : std_logic;
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
@@ -60,10 +62,10 @@ begin
                         round_counter_val => current_round,
 
                         -- outputs
-                        enc_ena => enc_ena,
-                        dec_ena => dec_ena,
-
-                        out_ena => out_ena,
+                        enc_ena  => enc_ena,
+                        dec_ena  => dec_ena,
+                        load_ena => load_ena,
+                        out_ena  => out_ena,
 
                         key_sched_ena => key_sched_ena,
                         mem_wr_ena    => mem_wr_ena,
@@ -74,8 +76,8 @@ begin
                         ready => ready,
 
                         -- debugging signals
-                        cu_state  => cu_state,
-                        
+                        cu_state => cu_state,
+
                         mem_address_mode => mem_address_mode
                 );
 
@@ -84,11 +86,11 @@ begin
                         COUNTER_WIDTH => 5
                 )
                 port map(
-                        clk    => clk,
-                        rst    => counter_rst,
-                        ena    => counter_ena,
-                        updown => counter_mode,
-                        count  => current_round
+                        clk     => clk,
+                        rst     => counter_rst,
+                        cnt_ena => counter_ena,
+                        updown  => counter_mode,
+                        count   => current_round
                 );
 
         key_sched : entity work.key_schedule_top
@@ -108,15 +110,28 @@ begin
         -- since we then need to address the round keys memory, using the exact value of the round counter.
 
         -- mem_address <= std_logic_vector(unsigned(current_round) - 1);
-        mem_address_control_adder : entity work.prog_adder
+        -- controlled_adder : entity work.prog_adder
+        --         generic map(
+        --                 DATA_WIDTH => 5
+        --         )
+        --         port map(
+        --                 input_A => current_round,
+        --                 input_B => "00001",
+        --                 mode    => mem_address_mode,
+        --                 out_val => mem_address
+        --         );
+
+        tmp <= std_logic_vector(unsigned(current_round) - 1);
+
+        mem_address_mux : entity work.mux
                 generic map(
                         DATA_WIDTH => 5
                 )
                 port map(
                         input_A => current_round,
-                        input_B => "00001",
-                        mode    => mem_address_mode,
-                        out_val => mem_address
+                        input_B => tmp,
+                        sel     => mem_address_mode,
+                        mux_out => mem_address
                 );
 
         round_key_mem : entity work.key_mem
@@ -131,26 +146,26 @@ begin
 
         enc_dp : entity work.present_enc
                 port map(
-                        clk               => clk,
-                        rst               => rst,
-                        ena               => enc_ena,
-                        out_ena           => out_ena,
-                        plaintext         => data_in,
-                        round_key         => key_mem_out,
-                        round_counter_val => current_round,
-                        ciphertext        => ciphertext
+                        clk        => clk,
+                        rst        => rst,
+                        ena        => enc_ena,
+                        load_ena   => load_ena,
+                        out_ena    => out_ena,
+                        plaintext  => data_in,
+                        round_key  => key_mem_out,
+                        ciphertext => ciphertext
                 );
 
         dec_dp : entity work.present_dec
                 port map(
-                        clk               => clk,
-                        rst               => rst,
-                        ena               => dec_ena,
-                        out_ena           => out_ena,
-                        ciphertext        => data_in,
-                        round_key         => key_mem_out,
-                        round_counter_val => current_round,
-                        plaintext         => plaintext
+                        clk        => clk,
+                        rst        => rst,
+                        ena        => dec_ena,
+                        load_ena   => load_ena,
+                        out_ena    => out_ena,
+                        ciphertext => data_in,
+                        round_key  => key_mem_out,
+                        plaintext  => plaintext
                 );
 
         -- mux that controls the output from the encryption and decryption cores
