@@ -37,19 +37,18 @@ architecture rtl of present is
         signal  cu_state : STATE; -- remove this , debugging signal       
 
         signal  ciphertext,
-                plaintext : std_logic_vector(63 downto 0);
+                plaintext,
+                mux_out : std_logic_vector(63 downto 0);
 
         signal  mem_address,
                 tmp : std_logic_vector(4 downto 0);
 
-        signal  mux_sel,
-                mem_address_mode,
+        signal  mem_address_mode,
                 out_ena,
                 load_ena : std_logic;
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
-        -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
-        mux_sel <= mode_sel(0);
+        -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
 
         control_unit : entity work.present_control_unit
                 port map(
@@ -149,8 +148,7 @@ begin
                         clk        => clk,
                         rst        => rst,
                         ena        => enc_ena,
-                        load_ena   => load_ena,
-                        out_ena    => out_ena,
+                        load_ena   => load_ena,                        
                         plaintext  => data_in,
                         round_key  => key_mem_out,
                         ciphertext => ciphertext
@@ -161,14 +159,15 @@ begin
                         clk        => clk,
                         rst        => rst,
                         ena        => dec_ena,
-                        load_ena   => load_ena,
-                        out_ena    => out_ena,
+                        load_ena   => load_ena,                        
                         ciphertext => data_in,
                         round_key  => key_mem_out,
                         plaintext  => plaintext
                 );
 
-        -- mux that controls the output from the encryption and decryption cores
+        -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
+        -- (0 for encryption, 1 for decryption), pass the output of the corresponding datapath to 
+        -- the output register's input.
         out_mux : entity work.mux
                 generic map(
                         DATA_WIDTH => 64
@@ -176,7 +175,22 @@ begin
                 port map(
                         input_A => ciphertext,
                         input_B => plaintext,
-                        sel     => mux_sel,
-                        mux_out => data_out
+                        sel     => mode_sel(0),                        
+                        mux_out => mux_out
                 );
+
+        -- Coprocessor-global output register, in order to preserve the computed output data,
+        -- until new ones are available. This can be helpful when a device reading from
+        -- the coprocessor's output, reads with a rate less than the data output rate.
+        out_reg : entity work.reg
+                generic map(
+                        DATA_WIDTH => 64       
+                )
+                port map(
+                        clk => clk,
+                        ena => out_ena,
+                        rst => rst,
+                        din => mux_out,
+                        dout => data_out
+                );                
 end architecture;

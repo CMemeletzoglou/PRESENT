@@ -6,8 +6,7 @@ entity present_dec is
                 clk               : in std_logic;
                 rst               : in std_logic;
                 ena               : in std_logic;
-                load_ena          : in std_logic;
-                out_ena           : in std_logic; -- output enable signal received from the Control Unit
+                load_ena          : in std_logic;                
                 ciphertext        : in std_logic_vector(63 downto 0);
                 round_key         : in std_logic_vector(63 downto 0);
                 plaintext         : out std_logic_vector(63 downto 0)
@@ -83,28 +82,6 @@ begin
                         inv_sbox_layer_in  => inv_sbox_layer_input,
                         inv_sbox_layer_out => inv_sbox_layer_out
                 );
-
-        -- 64-bit plaintext register
-        plain_reg : entity work.reg
-                generic map(
-                        DATA_WIDTH => BLOCK_SIZE
-                )
-                port map(
-                        clk  => clk,
-                        rst  => rst,
-                        -- ena  => plain_enable,
-                        ena  => out_ena,
-                        din  => inv_pbox_layer_input,
-                        dout => plaintext
-                );
-
-        -- The plaintext register enable signal, must be activated when the round counter underflows to "11111", which
-        -- happens both at the first cycle of a decryption operation (in a decryption operation, the round counter counts downwards
-        -- in order to retrieve the round keys from the round keys memory, in a reversed order which corresponds to an inverse key schedule),
-        -- but also after the end of a decryption operation.
-        -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the
-        -- shared, coprocessor-global data_out bus, when a decryption operation has finished.
-        -- plain_enable <= '1' when (round_counter_val = "11111" and out_ena = '1') else '0';
         
-        -- plain_enable <= '1' when (ena = '1' and out_ena = '1') else '0';
+        plaintext <= inv_pbox_layer_input;
 end structural;

@@ -7,7 +7,6 @@ entity present_enc is
                 rst        : in std_logic;
                 ena        : in std_logic;
                 load_ena   : in std_logic;
-                out_ena    : in std_logic; -- output enable signal received from the Control Unit
                 plaintext  : in std_logic_vector(63 downto 0);
                 round_key  : in std_logic_vector(63 downto 0); -- read from round keys mem
                 ciphertext : out std_logic_vector(63 downto 0)
@@ -84,25 +83,5 @@ begin
                         data_out => pbox_layer_out
                 );
 
-        -- 64-bit ciphertext register
-        ciph_reg : entity work.reg
-                generic map(
-                        DATA_WIDTH => BLOCK_SIZE
-                )
-                port map(
-                        clk => clk,
-                        rst => rst,
-                        -- ena  => ciph_enable,
-                        ena  => out_ena,
-                        din  => sbox_layer_input,
-                        dout => ciphertext
-                );
-
-        -- The ciphertext register enable signal, must be activated when the round counter overflows to "00000", which
-        -- happens both at the first cycle of an encryption operation, but also after the end of an encryption operation.
-        -- Therefore, we need an output enable signal (received from the Control Unit), in order to only write to the 
-        -- shared, coprocessor-global data_out bus, when an encryption operation has finished.        
-        -- ciph_enable <= '1' when (round_counter_val = "00000" and out_ena = '1') else '0';
-
-        -- ciph_enable <= '1' when (ena = '1' and out_ena = '1') else '0';
+        ciphertext <= sbox_layer_input; 
 end structural;
