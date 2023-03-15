@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 entity counter is
         generic (
-                COUNTER_WIDTH : natural
+                COUNTER_WIDTH : natural := 5
         );
         port (
                 clk     : in std_logic;
@@ -15,12 +15,12 @@ entity counter is
         );
 end counter;
 
-architecture behavioral of counter is
-        signal curr_count : unsigned(COUNTER_WIDTH - 1 downto 0) := (others => '0');
+architecture behavioral of counter is        
+        signal curr_count : unsigned(COUNTER_WIDTH - 1 downto 0);
 begin
-        process (clk, rst, cnt_ena, updown) -- asynchronous reset                
+        process (clk, rst, cnt_ena)             
         begin
-                if (rst = '1') then
+                if (rst = '1') then     -- asynchronous reset    
                         curr_count <= (others => '0');                        
                 elsif (rst = '0') then
                         if rising_edge(clk) then
