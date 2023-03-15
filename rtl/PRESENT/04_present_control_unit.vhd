@@ -18,6 +18,8 @@ entity present_control_unit is
                 load_ena          : out std_logic; -- sent to the encryption/decryption datapath and when high it enables loading the input data into the state register
                 out_ena           : out std_logic; -- new signal to allow the encryption datapath to write on the shared data_out bus
                 key_sched_ena     : out std_logic; -- top-level key schedule module enable
+
+                mem_ena           : out std_logic;
                 mem_wr_ena        : out std_logic; -- round keys memory write enable
                 counter_ena       : out std_logic; -- enable signal for the global round counter
                 counter_rst       : out std_logic; -- reset signal for the global round counter
@@ -93,6 +95,7 @@ begin
 
                                         key_sched_ena <= '0';
                                         mem_wr_ena    <= '0';
+                                        mem_ena <= '0';
 
                                 elsif (ena = '1' and key_ena = '1') then
                                         if (mode_sel(1) = '0' or mode_sel(1) = '1') then
@@ -108,7 +111,8 @@ begin
                                 end if;
 
                         when KEY_GEN =>
-                                mem_wr_ena <= '1'; -- write enable for key storage                                    
+                                mem_wr_ena <= '1'; -- write enable for key storage      
+                                mem_ena <= '1';                              
 
                                 -- check for a change in the value of the round counter, without using the event attribute
                                 -- if (round_counter_val'event and key_gen_clock_cycles < 32) then

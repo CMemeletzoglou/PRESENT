@@ -18,32 +18,32 @@ architecture behavioral of key_mem is
         subtype ROUND_KEY_T is std_logic_vector(63 downto 0);
         type ROUND_KEY_MEM is array (0 to 31) of ROUND_KEY_T;
         signal ram_block : ROUND_KEY_MEM;
-        
+
         -- synthesis attribute to make sure that the Xilinx Synthesis Tool,
         -- infers a Distributed RAM (i.e. a LUTRAM).
-        attribute ram_style : string;
+        attribute ram_style              : string;
         attribute ram_style of ram_block : signal is "distributed";
 begin
         -- write-first read/write synchronization mode ram (infers a block RAM). During a write operation, the data_out
         -- bus contains the data being written on the indexed address.
         -- Only the clock signal should be on the sensitivity list, hence all read and writes are synchronous operations
---         process (clk)        
---         begin
---                 if rising_edge(clk) then
---                         if (ena = '1') then
---                                 if (wr_ena = '1') then
---                                         ram_block(to_integer(unsigned(addr))) <= data_in; -- write operation
---                                          data_out                              <= data_in; -- pass the data being written to the output (write-first)
+        --         process (clk)        
+        --         begin
+        --                 if rising_edge(clk) then
+        --                         if (ena = '1') then
+        --                                 if (wr_ena = '1') then
+        --                                         ram_block(to_integer(unsigned(addr))) <= data_in; -- write operation
+        --                                          data_out                              <= data_in; -- pass the data being written to the output (write-first)
 
--- --                                        report "mem key in = " & to_hstring(data_in) & "  at time = " & time'image(now);
+        -- --                                        report "mem key in = " & to_hstring(data_in) & "  at time = " & time'image(now);
 
---                                 else
---                                         data_out <= ram_block(to_integer(unsigned(addr))); -- read operation if wr_ena = '0'                                       
---                                 end if;
---                         end if;
---                 end if;
---         end process;
-        
+        --                                 else
+        --                                         data_out <= ram_block(to_integer(unsigned(addr))); -- read operation if wr_ena = '0'
+        --                                 end if;
+        --                         end if;
+        --                 end if;
+        --         end process;
+
         process (clk)
         begin
                 if rising_edge(clk) then

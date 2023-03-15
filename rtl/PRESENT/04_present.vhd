@@ -31,8 +31,9 @@ architecture rtl of present is
         signal  enc_ena,
                 dec_ena : std_logic;
 
-        signal  key_sched_ena,
-                mem_wr_ena : std_logic;
+        signal  mem_ena,
+                mem_wr_ena,
+                mem_address_mode : std_logic;
 
         signal  cu_state : STATE; -- remove this , debugging signal       
 
@@ -43,7 +44,7 @@ architecture rtl of present is
         signal  mem_address,
                 tmp : std_logic_vector(4 downto 0);
 
-        signal  mem_address_mode,
+        signal  key_sched_ena,
                 out_ena,
                 load_ena : std_logic;
 begin
@@ -67,6 +68,7 @@ begin
                         out_ena  => out_ena,
 
                         key_sched_ena => key_sched_ena,
+                        mem_ena       => mem_ena,
                         mem_wr_ena    => mem_wr_ena,
                         counter_ena   => counter_ena,
                         counter_rst   => counter_rst,
@@ -139,6 +141,7 @@ begin
                         -- addr      => current_round,
                         addr     => mem_address,
                         data_in  => key_sched_out,
+                        ena      => mem_ena,
                         wr_ena   => mem_wr_ena,
                         data_out => key_mem_out
                 );
@@ -148,7 +151,7 @@ begin
                         clk        => clk,
                         rst        => rst,
                         ena        => enc_ena,
-                        load_ena   => load_ena,                        
+                        load_ena   => load_ena,
                         plaintext  => data_in,
                         round_key  => key_mem_out,
                         ciphertext => ciphertext
@@ -159,7 +162,7 @@ begin
                         clk        => clk,
                         rst        => rst,
                         ena        => dec_ena,
-                        load_ena   => load_ena,                        
+                        load_ena   => load_ena,
                         ciphertext => data_in,
                         round_key  => key_mem_out,
                         plaintext  => plaintext
@@ -175,7 +178,7 @@ begin
                 port map(
                         input_A => ciphertext,
                         input_B => plaintext,
-                        sel     => mode_sel(0),                        
+                        sel     => mode_sel(0),
                         mux_out => mux_out
                 );
 
@@ -184,13 +187,13 @@ begin
         -- the coprocessor's output, reads with a rate less than the data output rate.
         out_reg : entity work.reg
                 generic map(
-                        DATA_WIDTH => 64       
+                        DATA_WIDTH => 64
                 )
                 port map(
-                        clk => clk,
-                        ena => out_ena,
-                        rst => rst,
-                        din => mux_out,
+                        clk  => clk,
+                        ena  => out_ena,
+                        rst  => rst,
+                        din  => mux_out,
                         dout => data_out
-                );                
+                );
 end architecture;

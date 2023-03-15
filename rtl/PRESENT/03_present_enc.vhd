@@ -82,6 +82,6 @@ begin
                         data_in  => pbox_layer_input,
                         data_out => pbox_layer_out
                 );
-
-        ciphertext <= sbox_layer_input; 
+        
+        ciphertext <= sbox_layer_input;
 end structural;
