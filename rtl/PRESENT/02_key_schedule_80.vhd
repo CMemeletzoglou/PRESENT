@@ -14,8 +14,6 @@ entity key_schedule_80 is
 end entity key_schedule_80;
 
 architecture structural of key_schedule_80 is
-        signal  mux_sel : std_logic;
-
         signal  shifted_vec,
                 tmp,
                 reg_out,
@@ -41,7 +39,16 @@ begin
                         data_out => tmp(79 downto 76)
                 );
 
-        tmp(19 downto 15) <= shifted_vec(19 downto 15) xor round_counter_val;
+        xor_inst : entity work.xor_n
+                generic map(
+                        DATA_WIDTH => 5
+                )
+                port map(
+                        a => shifted_vec(19 downto 15),
+                        b => round_counter_val,
+                        y => tmp(19 downto 15)
+                );
+
         tmp(75 downto 20) <= shifted_vec(75 downto 20);
         tmp(14 downto 0)  <= shifted_vec(14 downto 0);
 
