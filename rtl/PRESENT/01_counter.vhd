@@ -17,8 +17,8 @@ end counter;
 
 architecture behavioral of counter is        
         signal curr_count : unsigned(COUNTER_WIDTH - 1 downto 0);
-begin
-        process (clk, rst, cnt_ena)             
+begin                  
+        process (clk, rst)             
         begin
                 if (rst = '1') then     -- asynchronous reset    
                         curr_count <= (others => '0');                        
