@@ -6,15 +6,18 @@ use work.state_pkg.all; -- for STATE type declaration
 
 entity present is
         port (
-                clk      : in std_logic;
-                rst      : in std_logic;
-                ena      : in std_logic;
-                key_ena  : in std_logic;
+                clk : in std_logic;
+                rst : in std_logic;
+                ena : in std_logic;
+
                 mode_sel : in std_logic_vector(1 downto 0);
                 key      : in std_logic_vector(127 downto 0);
                 data_in  : in std_logic_vector(63 downto 0);
                 data_out : out std_logic_vector(63 downto 0);
-                ready    : out std_logic
+                ready    : out std_logic;
+
+                -- debugging signal
+                curr_state : out STATE
         );
 end entity present;
 
@@ -22,76 +25,50 @@ architecture rtl of present is
         signal  key_sched_out,
                 key_mem_out : std_logic_vector(63 downto 0);
 
-        signal  current_round : std_logic_vector(4 downto 0);
-
-        signal  counter_ena,
-                counter_rst,
-                counter_mode : std_logic;
+        signal  current_round,
+                mem_address : std_logic_vector(4 downto 0);
 
         signal  enc_ena,
                 dec_ena : std_logic;
 
-        signal  mem_ena,
-                mem_wr_ena,
-                mem_address_mode : std_logic;
-
-        signal  cu_state : STATE; -- remove this , debugging signal       
+        signal  mem_wr_ena : std_logic;
 
         signal  ciphertext,
                 plaintext,
                 mux_out : std_logic_vector(63 downto 0);
 
-        signal  mem_address,
-                tmp : std_logic_vector(4 downto 0);
-
         signal  key_sched_ena,
                 out_ena,
-                load_ena : std_logic;
+                load_ena        : std_logic;
+
+
+        signal cu_state : STATE; -- remove this , debugging signal       
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
 
-        control_unit : entity work.present_control_unit
+        control_unit : entity work.present_control_unit_new
                 port map(
                         -- inputs
                         clk               => clk,
                         rst               => rst,
                         ena               => ena,
-                        key_ena           => key_ena,
                         mode_sel          => mode_sel,
+
                         round_counter_val => current_round,
+                        mem_addr          => mem_address,
+                        mem_wr_ena        => mem_wr_ena,
 
-                        -- outputs
-                        enc_ena  => enc_ena,
-                        dec_ena  => dec_ena,
-                        load_ena => load_ena,
-                        out_ena  => out_ena,
+                        enc_ena           => enc_ena,
+                        dec_ena           => dec_ena,
+                        load_ena          => load_ena,
 
-                        key_sched_ena => key_sched_ena,
-                        mem_ena       => mem_ena,
-                        mem_wr_ena    => mem_wr_ena,
-                        counter_ena   => counter_ena,
-                        counter_rst   => counter_rst,
-                        counter_mode  => counter_mode,
+                        key_sched_ena     => key_sched_ena,
+                        out_ena           => out_ena,
+                        ready             => ready,
 
-                        ready => ready,
-
-                        -- debugging signals
-                        cu_state => cu_state,
-
-                        mem_address_mode => mem_address_mode
-                );
-
-        round_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => 5
-                )
-                port map(
-                        clk     => clk,
-                        rst     => counter_rst,
-                        cnt_ena => counter_ena,
-                        updown  => counter_mode,
-                        count   => current_round
+                        -- debugging signal, remove later
+                        cu_state => curr_state
                 );
 
         key_sched : entity work.key_schedule_top
@@ -110,38 +87,11 @@ begin
         -- However, when an Encryption or a Decryption starts, we don't actually need this "-1" logic,
         -- since we then need to address the round keys memory, using the exact value of the round counter.
 
-        -- mem_address <= std_logic_vector(unsigned(current_round) - 1);
-        -- controlled_adder : entity work.prog_adder
-        --         generic map(
-        --                 DATA_WIDTH => 5
-        --         )
-        --         port map(
-        --                 input_A => current_round,
-        --                 input_B => "00001",
-        --                 mode    => mem_address_mode,
-        --                 out_val => mem_address
-        --         );
-
-        tmp <= std_logic_vector(unsigned(current_round) - 1);
-
-        mem_address_mux : entity work.mux
-                generic map(
-                        DATA_WIDTH => 5
-                )
-                port map(
-                        input_A => current_round,
-                        input_B => tmp,
-                        sel     => mem_address_mode,
-                        mux_out => mem_address
-                );
-
         round_key_mem : entity work.key_mem
                 port map(
-                        clk => clk,
-                        -- addr      => current_round,
+                        clk      => clk,
                         addr     => mem_address,
                         data_in  => key_sched_out,
-                        ena      => mem_ena,
                         wr_ena   => mem_wr_ena,
                         data_out => key_mem_out
                 );
