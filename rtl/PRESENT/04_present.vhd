@@ -47,7 +47,7 @@ begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
 
-        control_unit : entity work.present_control_unit_new
+        control_unit : entity work.present_control_unit
                 port map(
                         -- inputs
                         clk               => clk,
