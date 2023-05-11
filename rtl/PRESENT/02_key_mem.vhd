@@ -27,8 +27,7 @@ begin
         begin
                 if rising_edge(clk) then
                         if (wr_ena = '1') then -- write operation
-                                ram_block(to_integer(unsigned(addr))) <= data_in;
-                                report "here";
+                                ram_block(to_integer(unsigned(addr))) <= data_in;                                
                         end if;
                 end if;
         end process;
