@@ -112,6 +112,7 @@ begin
                                                 counter_ena <= '0';
                                                 fsm_state   <= DONE;
                                         end if;
+                                        
                                 when DONE =>
                                         enc_ena <= '0';
                                         dec_ena <= '0';
