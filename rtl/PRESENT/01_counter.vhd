@@ -9,8 +9,7 @@ entity counter is
         port (
                 clk     : in std_logic;
                 cnt_ena : in std_logic;
-                rst     : in std_logic;
-                updown  : in std_logic;
+                rst     : in std_logic;                
                 count   : out std_logic_vector(COUNTER_WIDTH - 1 downto 0)
         );
 end counter;
@@ -24,12 +23,8 @@ begin
                         curr_count <= (others => '0');                        
                 elsif (rst = '0') then
                         if rising_edge(clk) then
-                                if (cnt_ena = '1') then
-                                        if (updown = '0') then -- count upwards
-                                                curr_count <= curr_count + 1;
-                                        elsif (updown = '1') then -- count downwards
-                                                curr_count <= curr_count - 1;
-                                        end if;
+                                if (cnt_ena = '1') then                                        
+                                        curr_count <= curr_count + 1;
                                 end if;
                         end if;
                 end if;
