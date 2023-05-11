@@ -9,7 +9,7 @@ entity present_control_unit is
                 clk               : in std_logic;
                 rst               : in std_logic; -- system-wide reset signal
                 ena               : in std_logic; -- system-wide enable signal                
-                mode_sel          : in std_logic_vector(1 downto 0);
+                op_sel            : in std_logic;
 
                 round_counter_val : out std_logic_vector(4 downto 0);
                 mem_addr          : out std_logic_vector(4 downto 0);
@@ -24,31 +24,31 @@ entity present_control_unit is
                 ready             : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
 
                 -- debugging signal, remove later
-                cu_state   : out STATE
+                -- after removing this, the state type declaration can be placed on the arch declarative part
+                -- and thus get rid of the package file
+                cu_state : out STATE
         );
 end entity present_control_unit;
 
 architecture fsm of present_control_unit is
-        signal fsm_state : STATE;
+        signal  fsm_state : STATE;
 
-        signal counter_rst,
-        counter_ena : std_logic;
-        
+        signal  counter_rst,
+                counter_ena          : std_logic;
 
-        signal current_round : std_logic_vector(4 downto 0);
+        signal  current_round : std_logic_vector(4 downto 0);
 begin
-        -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
-        -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
+        -- op_sel = 1 -> Decrypt, 0 -> Encrypt
 
         cu_state <= fsm_state; -- debugging signal
 
-        fsm_process : process (clk, rst)                
+        fsm_process : process (clk, rst)
         begin
                 if (rst = '1') then
                         fsm_state <= INIT;
 
                         -- reset FSM output signals
-                        mem_addr <= "00000";
+                        mem_addr      <= "00000";
                         mem_wr_ena    <= '0';
                         enc_ena       <= '0';
                         dec_ena       <= '0';
@@ -67,13 +67,13 @@ begin
                         case fsm_state is
                                 when INIT =>
                                         if (ena = '1') then
-                                                if (mode_sel(0) = '0' or mode_sel(0) = '1') then
+                                                if (op_sel = '0' or op_sel = '1') then
                                                         key_sched_ena <= '1';
 
                                                         -- restart counter
-                                                        counter_rst  <= '0';
-                                                        counter_ena  <= '1';                                                        
-                                                        
+                                                        counter_rst <= '0';
+                                                        counter_ena <= '1';
+
                                                         fsm_state <= KEY_GEN;
                                                 end if;
                                         end if;
@@ -83,44 +83,35 @@ begin
                                         if (current_round = "11111") then
                                                 load_ena <= '1';
 
-                                                if (mode_sel(0) = '0') then
-                                                        enc_ena   <= '1';
-                                                        fsm_state <= OP_ENC;
-                                                elsif (mode_sel(0) = '1') then
-                                                        dec_ena   <= '1';
-                                                        fsm_state <= OP_DEC;
+                                                fsm_state <= CRYPTO_OP;
+
+                                                if (op_sel = '0') then
+                                                        enc_ena <= '1';
+                                                     
+                                                elsif (op_sel = '1') then
+                                                        dec_ena <= '1';
+                                                     
                                                 end if;
                                         end if;
 
-                                when OP_ENC =>
+                                when CRYPTO_OP =>
                                         load_ena      <= '0';
                                         key_sched_ena <= '0';
                                         mem_wr_ena    <= '0';
                                         ready         <= '0';
 
-                                        if (current_round = "11111") then
-                                                out_ena     <= '1';
-                                                counter_ena <= '0';
-                                                fsm_state   <= DONE;
-                                        end if;
-
-                                when OP_DEC =>
-                                        load_ena      <= '0';
-                                        key_sched_ena <= '0';
-                                        mem_wr_ena    <= '0';
-                                        ready         <= '0';
-                                        
                                         -- No updown counter is needed if we use an up counter and
                                         -- during the decryption operation we index the round keys 
                                         -- memory using (31 - current_round) as the memory address
-                                        mem_addr <= std_logic_vector(31 - unsigned(current_round));
+                                        if (op_sel = '1') then
+                                                mem_addr <= std_logic_vector(31 - unsigned(current_round));
+                                        end if;
 
                                         if (current_round = "11111") then
                                                 out_ena     <= '1';
                                                 counter_ena <= '0';
                                                 fsm_state   <= DONE;
                                         end if;
-
                                 when DONE =>
                                         enc_ena <= '0';
                                         dec_ena <= '0';
@@ -130,12 +121,13 @@ begin
                                         load_ena <= '1';
 
                                         counter_ena <= '1';
-                                        if (mode_sel(0) = '0') then
-                                                enc_ena   <= '1';
-                                                fsm_state <= OP_ENC;
-                                        elsif (mode_sel(0) = '1') then
-                                                dec_ena   <= '1';
-                                                fsm_state <= OP_DEC;
+                                        fsm_state   <= CRYPTO_OP;
+
+                                        if (op_sel = '0') then
+                                                enc_ena <= '1';
+                                                
+                                        elsif (op_sel = '1') then
+                                                dec_ena <= '1';
                                         end if;
 
                                 when others =>
@@ -144,7 +136,6 @@ begin
                 end if;
         end process;
 
-
         round_counter : entity work.counter
                 generic map(
                         COUNTER_WIDTH => 5
@@ -152,7 +143,7 @@ begin
                 port map(
                         clk     => clk,
                         rst     => counter_rst,
-                        cnt_ena => counter_ena,                        
+                        cnt_ena => counter_ena,
                         count   => current_round
                 );
 

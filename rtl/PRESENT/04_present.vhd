@@ -52,7 +52,7 @@ begin
                         clk      => clk,
                         rst      => rst,
                         ena      => ena,
-                        mode_sel => mode_sel,
+                        op_sel => mode_sel(0),
 
                         round_counter_val => current_round,
                         mem_addr          => mem_address,
