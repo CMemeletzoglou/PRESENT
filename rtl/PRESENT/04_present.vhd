@@ -6,9 +6,9 @@ use work.state_pkg.all; -- for STATE type declaration
 
 entity present is
         port (
-                clk : in std_logic;
-                rst : in std_logic;
-                ena : in std_logic;
+                clk      : in std_logic;
+                rst      : in std_logic;
+                ena      : in std_logic;
 
                 mode_sel : in std_logic_vector(1 downto 0);
                 key      : in std_logic_vector(127 downto 0);
@@ -40,9 +40,8 @@ architecture rtl of present is
         signal  key_sched_ena,
                 out_ena,
                 load_ena        : std_logic;
-
-
-        signal cu_state : STATE; -- remove this , debugging signal       
+        
+        signal cu_state : STATE; -- remove this , debugging signal  
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -50,22 +49,22 @@ begin
         control_unit : entity work.present_control_unit
                 port map(
                         -- inputs
-                        clk               => clk,
-                        rst               => rst,
-                        ena               => ena,
-                        mode_sel          => mode_sel,
+                        clk      => clk,
+                        rst      => rst,
+                        ena      => ena,
+                        mode_sel => mode_sel,
 
                         round_counter_val => current_round,
                         mem_addr          => mem_address,
                         mem_wr_ena        => mem_wr_ena,
 
-                        enc_ena           => enc_ena,
-                        dec_ena           => dec_ena,
-                        load_ena          => load_ena,
+                        enc_ena  => enc_ena,
+                        dec_ena  => dec_ena,
+                        load_ena => load_ena,
 
-                        key_sched_ena     => key_sched_ena,
-                        out_ena           => out_ena,
-                        ready             => ready,
+                        key_sched_ena => key_sched_ena,
+                        out_ena       => out_ena,
+                        ready         => ready,
 
                         -- debugging signal, remove later
                         cu_state => curr_state
@@ -81,11 +80,6 @@ begin
                         output_key        => key_sched_out,
                         round_counter_val => current_round
                 );
-
-        -- this "-1" in the value of the round counter, is needed during the KEY_GEN phase, due to the
-        -- 1 cycle delay introduced by the register in the output of the top-level key schedule module.
-        -- However, when an Encryption or a Decryption starts, we don't actually need this "-1" logic,
-        -- since we then need to address the round keys memory, using the exact value of the round counter.
 
         round_key_mem : entity work.key_mem
                 port map(
@@ -128,7 +122,7 @@ begin
                 port map(
                         input_A => ciphertext,
                         input_B => plaintext,
-                        sel     => mode_sel(0),
+                        sel     => dec_ena,
                         mux_out => mux_out
                 );
 
