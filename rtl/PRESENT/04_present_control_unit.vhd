@@ -8,209 +8,145 @@ entity present_control_unit is
         port (
                 clk               : in std_logic;
                 rst               : in std_logic; -- system-wide reset signal
-                ena               : in std_logic; -- system-wide enable signal
-                key_ena           : in std_logic; -- used as a key_load signal when high
-                mode_sel          : in std_logic_vector(1 downto 0);
-                round_counter_val : in std_logic_vector(4 downto 0); -- current round from system-global round counter
+                ena               : in std_logic; -- system-wide enable signal                
+                op_sel            : in std_logic;
 
-                enc_ena           : out std_logic; -- encryption datapath enable
-                dec_ena           : out std_logic; -- decryption datapath enable
-                out_ena           : out std_logic; -- new signal to allow the encryption datapath to write on the shared data_out bus
-                key_sched_ena     : out std_logic; -- top-level key schedule module enable
+                round_counter_val : out std_logic_vector(4 downto 0);
+                mem_addr          : out std_logic_vector(4 downto 0);
                 mem_wr_ena        : out std_logic; -- round keys memory write enable
-                counter_ena       : out std_logic; -- enable signal for the global round counter
-                counter_rst       : out std_logic; -- reset signal for the global round counter
-                counter_mode      : out std_logic;
+
+                enc_ena           : out std_logic; -- encryption datapath enable (maybe merge these two into one signal?)
+                dec_ena           : out std_logic; -- decryption datapath enable (maybe merge these two into one signal?)
+                load_ena          : out std_logic; -- sent to the encryption/decryption datapath and when high it enables loading the input data into the state register
+
+                key_sched_ena     : out std_logic; -- top-level key schedule module enable
+                out_ena           : out std_logic; -- allow the output register to capture enc/dec datapath output
                 ready             : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
 
                 -- debugging signal, remove later
-                cu_state          : out STATE;                
-
-                mem_address_mode  : out std_logic
+                -- after removing this, the state type declaration can be placed on the arch declarative part
+                -- and thus get rid of the package file
+                cu_state : out STATE
         );
 end entity present_control_unit;
 
-architecture rtl of present_control_unit is
-        signal curr_state, next_state : STATE;
+architecture fsm of present_control_unit is
+        signal  fsm_state : STATE;
+
+        signal  counter_rst,
+                counter_ena          : std_logic;
+
+        signal  current_round : std_logic_vector(4 downto 0);
 begin
-        -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
-        -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt
+        -- op_sel = 1 -> Decrypt, 0 -> Encrypt
 
-        cu_state <= curr_state; -- debugging signal
+        cu_state <= fsm_state; -- debugging signal
 
-        state_reg_proc : process (clk, rst, ena)
+        fsm_process : process (clk, rst)
         begin
                 if (rst = '1') then
-                        curr_state <= RESET;
-                elsif (ena = '1' and rising_edge(clk)) then
-                        curr_state <= next_state; -- curr_state stored in register of width log2(#states)
-                end if;
-        end process state_reg_proc;
+                        fsm_state <= INIT;
 
-        next_state_logic : process (curr_state, ena, key_ena, mode_sel, round_counter_val)
-                -- The following helper variables have 33 possible values, due to their usage in the KEY_GEN phase
-                -- and the OP_ENC/OP_DEC phases, respectively, where there is one clock cycle delay introduced by
-                -- certain registers in the involved submodules. Specifically :
-                --                 
-                --   a) key_gen_clock_cycles : this variable is used during the KEY_GEN phase, where 
-                --      (32 + 1) clock cycles are needed in order to generate the 32 keys, due to the one clock
-                --      cycle delay introduced by the output register of the top-level key schedule module.
-                --      
-                --   b) operation_clock_cycles : this variable is used during the OP_ENC/OP_DEC phases, where
-                --      32 cycles are needed for the actual encryption/decryption operation (since there are 32
-                --      round keys), plus one cycle due to the one clock cycle delay introduced by the state and
-                --      output registers of the encryption/decryption datapaths.
-                variable key_gen_clock_cycles  : natural range 0 to 32;
-                variable operation_clock_cycles : natural range 0 to 32;
-                
-                -- Helper variable to store the previous value of the round counter, in order to compare it
-                -- with the current one (round_counter_val input signal).
-                -- This way, we implement the logic of the "round_counter_val'event" check, but without
-                -- using the event attribute on the std_logic_vector, which poses a non-synthesizable solution.                
-                variable prev_round_counter_val : unsigned(4 downto 0);
-        begin
-                case curr_state is
-                        when RESET =>
-                                counter_rst  <= '1';
-                                counter_mode <= '0'; -- counter counts upwards to store generated keys
-                                counter_ena  <= '0';
-                                ready        <= '0';
-                                key_gen_clock_cycles  := 0;
-                                operation_clock_cycles := 0;
-                                next_state <= INIT;
-                                
-                                mem_address_mode <= '1';
-                                out_ena          <= '0';
+                        -- reset FSM output signals
+                        mem_addr      <= "00000";
+                        mem_wr_ena    <= '0';
+                        enc_ena       <= '0';
+                        dec_ena       <= '0';
+                        load_ena      <= '0';
+                        key_sched_ena <= '0';
+                        out_ena       <= '0';
+                        ready         <= '0';
 
-                        when INIT =>
-                                if (ena = '1' and key_ena = '1') then
-                                        if (mode_sel(1) = '0' or mode_sel(1) = '1') then
-                                                next_state    <= KEY_GEN;
-                                                counter_rst   <= '0';
-                                                counter_ena   <= '1'; -- start the counter
-                                                key_sched_ena <= '1';
+                        -- reset internal counter
+                        counter_rst <= '1';
+                        counter_ena <= '0';
 
-                                                prev_round_counter_val := "00000";
-                                        else
-                                                next_state <= INVALID;
+                elsif rising_edge(clk) then
+                        mem_addr <= current_round;
+
+                        case fsm_state is
+                                when INIT =>
+                                        if (ena = '1') then
+                                                if (op_sel = '0' or op_sel = '1') then
+                                                        key_sched_ena <= '1';
+
+                                                        -- restart counter
+                                                        counter_rst <= '0';
+                                                        counter_ena <= '1';
+
+                                                        fsm_state <= KEY_GEN;
+                                                end if;
                                         end if;
-                                end if;
 
-                        when KEY_GEN =>
-                                mem_wr_ena <= '1'; -- write enable for key storage  
-                                
-                                -- check for a change in the value of the round counter, without using the event attribute
-                                -- if (round_counter_val'event and key_gen_clock_cycles < 32) then
-                                if (unsigned(round_counter_val) /= prev_round_counter_val and key_gen_clock_cycles < 32) then
-                                        key_gen_clock_cycles := key_gen_clock_cycles + 1;  
+                                when KEY_GEN =>
+                                        mem_wr_ena <= '1';
+                                        if (current_round = "11111") then
+                                                load_ena <= '1';
+
+                                                fsm_state <= CRYPTO_OP;
+
+                                                if (op_sel = '0') then
+                                                        enc_ena <= '1';
+                                                     
+                                                elsif (op_sel = '1') then
+                                                        dec_ena <= '1';
+                                                     
+                                                end if;
+                                        end if;
+
+                                when CRYPTO_OP =>
+                                        load_ena      <= '0';
+                                        key_sched_ena <= '0';
+                                        mem_wr_ena    <= '0';
+                                        ready         <= '0';
+
+                                        -- No updown counter is needed if we use an up counter and
+                                        -- during the decryption operation we index the round keys 
+                                        -- memory using (31 - current_round) as the memory address
+                                        if (op_sel = '1') then
+                                                mem_addr <= std_logic_vector(31 - unsigned(current_round));
+                                        end if;
+
+                                        if (current_round = "11111") then
+                                                out_ena     <= '1';
+                                                counter_ena <= '0';
+                                                fsm_state   <= DONE;
+                                        end if;
                                         
-                                        -- the current value of the round counter is the next previous one
-                                        prev_round_counter_val := unsigned(round_counter_val); 
-                                end if;
+                                when DONE =>
+                                        enc_ena <= '0';
+                                        dec_ena <= '0';
+                                        ready   <= '1';
+                                        out_ena <= '0';
 
-                                if (key_gen_clock_cycles = 32) then
-                                        next_state <= KEYS_READY;
-                                end if;
+                                        load_ena <= '1';
 
-                        when KEYS_READY =>
-                                key_sched_ena <= '0';
-                                mem_wr_ena    <= '0';
+                                        counter_ena <= '1';
+                                        fsm_state   <= CRYPTO_OP;
 
-                                if (mode_sel(0) = '1') then     -- decryption mode
-                                        next_state   <= OP_DEC;
-                                        counter_rst  <= '1';
-                                        counter_ena  <= '0';
-                                        counter_mode <= '1';    -- count downwards
+                                        if (op_sel = '0') then
+                                                enc_ena <= '1';
+                                                
+                                        elsif (op_sel = '1') then
+                                                dec_ena <= '1';
+                                        end if;
 
-                                        prev_round_counter_val := "11111";
-                                elsif (mode_sel(0) = '0') then  -- encryption mode
-                                        next_state   <= OP_ENC;
-                                        counter_rst  <= '1';
-                                        counter_ena  <= '0';
-                                        counter_mode <= '0';    -- count upwards     
+                                when others =>
+                                        fsm_state <= INVALID;
+                        end case;
+                end if;
+        end process;
 
-                                        prev_round_counter_val := "00000";
-                                else
-                                        next_state <= INVALID;
-                                end if;
+        round_counter : entity work.counter
+                generic map(
+                        COUNTER_WIDTH => 5
+                )
+                port map(
+                        clk     => clk,
+                        rst     => counter_rst,
+                        cnt_ena => counter_ena,
+                        count   => current_round
+                );
 
-                        when OP_ENC =>
-                                enc_ena <= '1';
-                                dec_ena <= '0';
-
-                                counter_rst <= '0';
-                                counter_ena <= '1';
-
-                                mem_address_mode <= '1';
-
-                                -- check for a change in the value of the round counter, without using the event attribute
-                                -- if (round_counter_val'event and operation_clock_cycles < 32) then
-                                if (unsigned(round_counter_val) /= prev_round_counter_val and operation_clock_cycles < 32) then
-                                        operation_clock_cycles := operation_clock_cycles + 1;
-
-                                        -- the current value of the round counter is the next previous one
-                                        prev_round_counter_val := unsigned(round_counter_val);
-                                end if;
-
-                                if (operation_clock_cycles = 32) then
-                                        enc_ena     <= '0';
-                                        next_state  <= DONE;
-                                        counter_rst <= '1';
-                                        counter_ena <= '0';
-                                        out_ena     <= '1';
-                                end if;
-
-                        when OP_DEC =>
-                                dec_ena <= '1';
-                                enc_ena <= '0';
-
-                                counter_rst <= '0';
-                                counter_ena <= '1';
-
-                                mem_address_mode <= '0';
-
-                                -- check for a change in the value of the round counter, without using the event attribute
-                                -- if (round_counter_val'event and operation_clock_cycles < 32) then
-                                if (unsigned(round_counter_val) /= prev_round_counter_val and operation_clock_cycles < 32) then
-                                        operation_clock_cycles := operation_clock_cycles + 1;
-
-                                        -- the current value of the round counter is the next previous one
-                                        prev_round_counter_val := unsigned(round_counter_val);
-                                end if;                                        
-
-                                if (operation_clock_cycles = 32) then
-                                        dec_ena     <= '0';
-                                        next_state  <= DONE;
-                                        counter_rst <= '1';
-                                        counter_ena <= '0';
-                                        out_ena     <= '1';
-                                end if;
-
-                        when DONE =>
-                                ready      <= '1';
-                                operation_clock_cycles := 0;
-                                out_ena <= '0';
-
-                                -- start a new encryption decryption
-                                if (mode_sel(0) = '0') then -- start encryption
-                                        next_state <= OP_ENC;
-                                        prev_round_counter_val := b"00000";
-                                        counter_mode <= '0';
-                                        ready <= '0';
-                                elsif (mode_sel(0) = '1') then
-                                        next_state <= OP_DEC;
-                                        prev_round_counter_val := b"11111";
-                                        counter_mode <= '1';
-                                        ready <= '0';
-                                else 
-                                        next_state <= DONE;
-                                end if;
-
-                        when INVALID =>
-                                next_state <= INVALID;
-
-                        when others =>
-                                next_state <= INVALID;
-                end case;
-        end process next_state_logic;
+        round_counter_val <= current_round;
 end architecture;

@@ -7,25 +7,23 @@ entity reg is
         );
         port (
                 clk  : in std_logic;
-                rst  : in std_logic;
                 ena  : in std_logic;
+                rst  : in std_logic;
                 din  : in std_logic_vector(DATA_WIDTH - 1 downto 0);
                 dout : out std_logic_vector(DATA_WIDTH - 1 downto 0)
         );
 end reg;
 
-architecture rtl of reg is
+architecture structural of reg is
 begin
-        process (clk, rst, ena) -- asynchronous active high reset
-        begin
-                if (rst = '1') then
-                        dout <= (others => '0');
-                elsif rising_edge(clk) then
-                        if (ena = '1') then
-                                dout <= din;
---                        else
---                                dout <= ((others => 'Z'));
-                        end if;
-                end if;
-        end process;
-end rtl;
+        dff_gen_loop : for i in 0 to DATA_WIDTH - 1 generate
+                dff_inst : entity work.dflip_flop
+                        port map(
+                                clk => clk,
+                                ena => ena,
+                                rst => rst,
+                                d   => din(i),
+                                q   => dout(i)
+                        );
+        end generate;
+end architecture;

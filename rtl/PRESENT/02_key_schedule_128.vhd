@@ -1,12 +1,12 @@
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
 
 entity key_schedule_128 is
         port (
                 clk               : in std_logic;
                 rst               : in std_logic;
                 ena               : in std_logic;
+                key_load_ena      : in std_logic;
                 input_key         : in std_logic_vector(127 downto 0);
                 round_counter_val : in std_logic_vector(4 downto 0);
                 output_key        : out std_logic_vector(127 downto 0)
@@ -14,17 +14,12 @@ entity key_schedule_128 is
 end entity;
 
 architecture structural of key_schedule_128 is
-        signal  mux_sel : std_logic;
-
         signal  shifted_vec,
                 tmp,
                 reg_out,
                 mux_out,
                 key_mux_out : std_logic_vector(127 downto 0);
 begin
-        mux_sel <= '1' when (round_counter_val = "00000" and ena = '1') else '0';
-
-        -- pass feedback from output register or input key at the very first round
         key_sched_input_mux : entity work.mux
                 generic map(
                         DATA_WIDTH => 128
@@ -32,7 +27,7 @@ begin
                 port map(
                         input_A => reg_out,
                         input_B => input_key,
-                        sel     => mux_sel,
+                        sel     => key_load_ena,
                         mux_out => mux_out
                 );
 
@@ -50,7 +45,16 @@ begin
                         data_out => tmp(123 downto 120)
                 );
 
-        tmp(66 downto 62)  <= shifted_vec(66 downto 62) xor round_counter_val;
+        xor_inst : entity work.xor_n
+                generic map(
+                        DATA_WIDTH => 5
+                )
+                port map(
+                        a => shifted_vec(66 downto 62),
+                        b => round_counter_val,
+                        y => tmp(66 downto 62)
+                );
+
         tmp(119 downto 67) <= shifted_vec(119 downto 67);
         tmp(61 downto 0)   <= shifted_vec(61 downto 0);
 
@@ -61,7 +65,7 @@ begin
                 port map(
                         input_A => tmp,
                         input_B => input_key,
-                        sel     => mux_sel,
+                        sel     => key_load_ena,
                         mux_out => key_mux_out
                 );
 
