@@ -139,5 +139,5 @@ begin
                         rst  => rst,
                         din  => mux_out,
                         dout => data_out
-                );
+                );                             
 end architecture;

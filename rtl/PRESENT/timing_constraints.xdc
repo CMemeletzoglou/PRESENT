@@ -1,4 +1,10 @@
-create_clock -period 5.200 -name clk -waveform {0.000 2.600} [get_ports -filter { NAME =~  "*clk*" && DIRECTION == "IN" }]
+create_clock -period 3.350 -name clk -waveform {0.000 1.675} [get_ports -filter { NAME =~  "*clk*" && DIRECTION == "IN" }]
+
+
+
+
+
+
 
 
 
