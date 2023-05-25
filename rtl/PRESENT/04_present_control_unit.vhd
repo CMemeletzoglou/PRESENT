@@ -2,46 +2,37 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.state_pkg.all; -- for STATE type declaration
-
 entity present_control_unit is
         port (
-                clk               : in std_logic;
-                rst               : in std_logic; -- system-wide reset signal
-                ena               : in std_logic; -- system-wide enable signal                
-                op_sel            : in std_logic;
+                clk                     : in std_logic;
+                rst                     : in std_logic; -- system-wide reset signal
+                ena                     : in std_logic; -- system-wide enable signal                
+                op_sel                  : in std_logic;
 
-                round_counter_val : out std_logic_vector(4 downto 0);
-                mem_addr          : out std_logic_vector(4 downto 0);
-                mem_wr_ena        : out std_logic; -- round keys memory write enable
+                round_counter_val       : out std_logic_vector(4 downto 0);
+                mem_addr                : out std_logic_vector(4 downto 0);
+                mem_wr_ena              : out std_logic; -- round keys memory write enable
 
-                enc_ena           : out std_logic; -- encryption datapath enable (maybe merge these two into one signal?)
-                dec_ena           : out std_logic; -- decryption datapath enable (maybe merge these two into one signal?)
-                load_ena          : out std_logic; -- sent to the encryption/decryption datapath and when high it enables loading the input data into the state register
+                enc_ena                 : out std_logic; -- encryption datapath enable
+                dec_ena                 : out std_logic; -- decryption datapath enable
+                load_ena                : out std_logic; -- sent to the encryption/decryption datapath and when high it enables loading the input data into the state register
 
-                key_sched_ena     : out std_logic; -- top-level key schedule module enable
-                out_ena           : out std_logic; -- allow the output register to capture enc/dec datapath output
-                ready             : out std_logic; -- system-global ready signal (indicates a finished encryption or decryption process)
-
-                -- debugging signal, remove later
-                -- after removing this, the state type declaration can be placed on the arch declarative part
-                -- and thus get rid of the package file
-                cu_state : out STATE
+                key_sched_ena           : out std_logic; -- top-level key schedule module enable
+                out_ena                 : out std_logic; -- allow the output register to capture enc/dec datapath output
+                ready                   : out std_logic -- system-global ready signal (indicates a finished encryption or decryption process)
         );
 end entity present_control_unit;
 
 architecture fsm of present_control_unit is
+        type STATE is (INIT, KEY_GEN, CRYPTO_OP, DONE);
         signal  fsm_state : STATE;
 
         signal  counter_rst,
-                counter_ena          : std_logic;
+                counter_ena : std_logic;
 
         signal  current_round : std_logic_vector(4 downto 0);
 begin
         -- op_sel = 1 -> Decrypt, 0 -> Encrypt
-
-        cu_state <= fsm_state; -- debugging signal
-
         fsm_process : process (clk, rst)
         begin
                 if (rst = '1') then
@@ -87,10 +78,10 @@ begin
 
                                                 if (op_sel = '0') then
                                                         enc_ena <= '1';
-                                                     
+
                                                 elsif (op_sel = '1') then
                                                         dec_ena <= '1';
-                                                     
+
                                                 end if;
                                         end if;
 
@@ -112,7 +103,7 @@ begin
                                                 counter_ena <= '0';
                                                 fsm_state   <= DONE;
                                         end if;
-                                        
+
                                 when DONE =>
                                         enc_ena <= '0';
                                         dec_ena <= '0';
@@ -126,13 +117,13 @@ begin
 
                                         if (op_sel = '0') then
                                                 enc_ena <= '1';
-                                                
+
                                         elsif (op_sel = '1') then
                                                 dec_ena <= '1';
                                         end if;
 
                                 when others =>
-                                        fsm_state <= INVALID;
+                                        fsm_state <= INIT;
                         end case;
                 end if;
         end process;

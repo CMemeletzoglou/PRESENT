@@ -2,8 +2,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.state_pkg.all; -- for STATE type declaration
-
 entity present is
         port (
                 clk      : in std_logic;
@@ -14,10 +12,7 @@ entity present is
                 key      : in std_logic_vector(127 downto 0);
                 data_in  : in std_logic_vector(63 downto 0);
                 data_out : out std_logic_vector(63 downto 0);
-                ready    : out std_logic;
-
-                -- debugging signal
-                curr_state : out STATE
+                ready    : out std_logic
         );
 end entity present;
 
@@ -40,8 +35,6 @@ architecture rtl of present is
         signal  key_sched_ena,
                 out_ena,
                 load_ena        : std_logic;
-        
-        signal cu_state : STATE; -- remove this , debugging signal  
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -64,10 +57,7 @@ begin
 
                         key_sched_ena => key_sched_ena,
                         out_ena       => out_ena,
-                        ready         => ready,
-
-                        -- debugging signal, remove later
-                        cu_state => curr_state
+                        ready         => ready
                 );
 
         key_sched : entity work.key_schedule_top
