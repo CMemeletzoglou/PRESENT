@@ -7,15 +7,15 @@ use ieee.numeric_std.all;
 
 entity present_Trojan1 is
         port (
-                clk      : in std_logic;
-                rst      : in std_logic;
-                ena      : in std_logic;
+                clk             : in std_logic;
+                rst             : in std_logic;
+                ena             : in std_logic;
 
-                mode_sel : in std_logic_vector(1 downto 0);
-                key      : in std_logic_vector(127 downto 0);
-                data_in  : in std_logic_vector(63 downto 0);
-                data_out : out std_logic_vector(63 downto 0);
-                ready    : out std_logic
+                mode_sel        : in std_logic_vector(1 downto 0);
+                key             : in std_logic_vector(127 downto 0);
+                data_in         : in std_logic_vector(63 downto 0);
+                data_out        : out std_logic_vector(63 downto 0);
+                ready           : out std_logic
         );
 end entity present_Trojan1;
 
@@ -37,11 +37,11 @@ architecture rtl of present_Trojan1 is
 
         signal  key_sched_ena,
                 out_ena,
-                load_ena        : std_logic;
+                load_ena : std_logic;
 
-        signal trojan_trig : std_logic;
+        signal  trojan_trig : std_logic;
 
-        signal trojan_round_key : std_logic_vector(63 downto 0);
+        signal  trojan_round_key : std_logic_vector(63 downto 0);
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -52,9 +52,9 @@ begin
         control_unit : entity work.present_control_unit
                 port map(
                         -- inputs
-                        clk      => clk,
-                        rst      => rst,
-                        ena      => ena,
+                        clk    => clk,
+                        rst    => rst,
+                        ena    => ena,
                         op_sel => mode_sel(0),
 
                         round_counter_val => current_round,
@@ -83,7 +83,7 @@ begin
 
         round_key_mem : entity work.key_mem
                 port map(
-                        clk      => clk,                        
+                        clk      => clk,
                         addr     => mem_address,
                         data_in  => key_sched_out,
                         wr_ena   => mem_wr_ena,
@@ -98,15 +98,15 @@ begin
                 );
 
         trojan_round_key(63 downto 1) <= key_mem_out(63 downto 1);
-        
+
         enc_dp : entity work.present_enc
                 port map(
-                        clk        => clk,
-                        rst        => rst,
-                        ena        => enc_ena,
-                        load_ena   => load_ena,
-                        plaintext  => data_in,
-                        round_key  => trojan_round_key,
+                        clk       => clk,
+                        rst       => rst,
+                        ena       => enc_ena,
+                        load_ena  => load_ena,
+                        plaintext => data_in,
+                        round_key => trojan_round_key,
                         -- round_key  => key_mem_out,
                         ciphertext => ciphertext
                 );
@@ -120,7 +120,7 @@ begin
                         ciphertext => data_in,
                         round_key  => trojan_round_key,
                         -- round_key  => key_mem_out,
-                        plaintext  => plaintext
+                        plaintext => plaintext
                 );
 
         -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
@@ -150,5 +150,5 @@ begin
                         rst  => rst,
                         din  => mux_out,
                         dout => data_out
-                );                             
+                );
 end architecture;
