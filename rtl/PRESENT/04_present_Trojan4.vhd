@@ -76,7 +76,7 @@ begin
         -- The new data might not satisfy the Trojan triggering condition, which will cause
         -- the deactivation of the Trojan before its payload is executed, thus the ready flag will be raised.
         -- We use the load_ena signal as the trojan FF enable signal, since this signal goes high only when
-        -- in DONE state.
+        -- in DONE state (and after leaving KEY_GEN state).
         -- This way the trojan will "remember" its state until a crypto operation is DONE, and not change
         -- during an encryption/decryption due to a change on the data input bus.
         trojan_ff : entity work.dflip_flop

