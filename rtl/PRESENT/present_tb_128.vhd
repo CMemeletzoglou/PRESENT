@@ -74,7 +74,7 @@ begin
                 wait for clk_period;
 
                 assert data_out = x"3c6019e5e5edd563"
-                report "Encryption failed for input data=0xFFFFFFFFFFFFFFFF and key = 0x00000000000000000000000000000000 \\ @ " & time'image(now)
+                report "Encryption failed for input data=0xFFFFFFFFFFFFFFFF and key = 0x00000000000000000000000000000000 @ " & time'image(now)
                         severity failure;
 
                 wait for 32 * clk_period;
@@ -88,7 +88,7 @@ begin
                 -- after 32 cycles they encrypted data are available, however in order for the assertion to succeed
                 -- we need to wait for one more clock cycle, as explained above
                 assert data_out = x"96db702a2e6900af"
-                report "Encryption failed for input data=0x0000000000000000 and key = 0x00000000000000000000000000000000 \\ @ " & time'image(now)
+                report "Encryption failed for input data=0x0000000000000000 and key = 0x00000000000000000000000000000000 @ " & time'image(now)
                         severity failure;
 
                 wait for 32 * clk_period;
@@ -98,13 +98,13 @@ begin
                 wait for clk_period;
 
                 assert data_out = x"FFFFFFFFFFFFFFFF"
-                report "Decryption failed for input data=0x3c6019e5e5edd563 and key = 0x00000000000000000000000000000000 \\ @ " & time'image(now)
+                report "Decryption failed for input data=0x3c6019e5e5edd563 and key = 0x00000000000000000000000000000000 @ " & time'image(now)
                         severity failure;
 
                 wait for 33 * clk_period;
 
                 assert data_out = x"0000000000000000"
-                report "Decryption failed for input data=0x96db702a2e6900af and key = 0x00000000000000000000000000000000 \\ @ " & time'image(now)
+                report "Decryption failed for input data=0x96db702a2e6900af and key = 0x00000000000000000000000000000000 @ " & time'image(now)
                         severity failure;
 
                 --------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 entity counter is
         generic (
-                COUNTER_WIDTH : natural := 5
+                COUNTER_WIDTH : natural
         );
         port (
                 clk     : in std_logic;
