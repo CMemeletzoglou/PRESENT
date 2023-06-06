@@ -39,7 +39,7 @@ architecture rtl of present_Trojan4 is
                 out_ena,
                 load_ena        : std_logic;
 
-        signal ready_cu : std_logic;
+        signal  ready_cu : std_logic;
 
         signal  trojan_trig,                
                 trojan_ff_out    : std_logic;
