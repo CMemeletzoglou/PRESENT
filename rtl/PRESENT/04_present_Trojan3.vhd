@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 3: trigger = Specific bit pattern (1111 = 0xF) of the Least Significant bits of the input data
+-- Trojan 3: trigger = Specific bit pattern (1011 = 0xB) of the Least Significant bits of the input data
 -- payload = write the output data of the incorrect/unselected datapath(NOT mode_sel(0)) onto the output data bus
 
 entity present_Trojan3 is
@@ -110,7 +110,7 @@ begin
                 );
         
         -- trigger when the LSBits of the input data are all ones
-        trojan_trig <= '1' when data_in(3 downto 0) = x"F" else '0';
+        trojan_trig <= '1' when data_in(3 downto 0) = x"B" else '0';
         
         -- need a flip-flop to store the **trojan's state** (i.e. trigger condition satisfied or not),
         -- since during normal operation the input data will change before entering DONE state
