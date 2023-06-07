@@ -17,9 +17,7 @@ architecture bench of present_Trojan5_tb is
                         key : in std_logic_vector(127 downto 0);
                         data_in : in std_logic_vector(63 downto 0);
                         data_out : out std_logic_vector(63 downto 0);
-                        ready : out std_logic;
-                        trojan_trig : out std_logic;
-                        trojan_key : out std_logic_vector(127 downto 0)
+                        ready : out std_logic
                 );
         end component;
 
@@ -36,8 +34,6 @@ architecture bench of present_Trojan5_tb is
         signal data_in : std_logic_vector(63 downto 0);
         signal data_out : std_logic_vector(63 downto 0);
         signal ready : std_logic;
-        signal trojan_trig : std_logic;
-        signal trojan_key : std_logic_vector(127 downto 0);
 begin
 
         present_Trojan5_inst : present_Trojan5
@@ -49,9 +45,7 @@ begin
                 key => key,
                 data_in => data_in,
                 data_out => data_out,
-                ready => ready,
-                trojan_trig => trojan_trig,
-                trojan_key => trojan_key
+                ready => ready
         );
 
         clk_process : process
@@ -77,19 +71,41 @@ begin
                         
                         return slv;
                 end function;
+
+                variable tmp : std_logic_vector(127 downto 0);
         begin
                 rst <= '1', '0' after clk_period;
                 ena <= '0', '1' after clk_period;
+                mode_sel <= b"10"; -- use 128-bit encryption first to show that the trojan stays inactive
 
-                mode_sel <= b"00";
+                tmp := rand_slv(128);
+                key <= tmp(127 downto 8) & x"1A";
 
-                rand_key_loop : for k in 0 to 127 loop
+                data_in <= rand_slv(64); -- add first data
+
+                rand_slv_gen_loop_key128 : for i in 0 to 30 loop
+                        wait for 33 * clk_period;
+                        
+                        if i = 0 then
+                                -- wait for 33 clock cycles (1 cycle to transition into state KEY_GEN and 32 cycles to generate the round keys)                                
+                                wait for 33 * clk_period;
+                        end if;
+                        
+                        data_in <= rand_slv(64);
+
+                        if i = 30 then
+                                wait for 34 * clk_period;
+                        end if;
+                end loop rand_slv_gen_loop_key128;
+
+                mode_sel <= b"00"; -- switch to 80-bit encryption
+                rand_key_loop : for k in 0 to 255 loop
                         rst <= '1', '0' after clk_period;
                         ena <= '0', '1' after clk_period;
 
                         key <= x"000000000000" & rand_slv(80);                
 
-                        rand_slv_gen_loop : for i in 0 to 63 loop                                                                                  
+                        rand_slv_gen_loop : for i in 0 to 31 loop                                                                                  
                                 wait for 33 * clk_period;
                                 
                                 if i = 0 then
@@ -99,7 +115,7 @@ begin
                                 
                                 data_in <= rand_slv(64);
 
-                                if i = 63 then
+                                if i = 31 then
                                         wait for 34 * clk_period;
                                 end if;
                         end loop rand_slv_gen_loop;
