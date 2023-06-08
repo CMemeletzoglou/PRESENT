@@ -7,6 +7,9 @@ use ieee.numeric_std.all;
 -- not permitting the computed data to be placed on the output data bus.
 
 entity present_Trojan6 is
+        generic (
+                TROJAN_COUNTER_WIDTH : natural := 10
+        );
         port (
                 clk             : in std_logic;
                 rst             : in std_logic;
@@ -41,8 +44,7 @@ architecture rtl of present_Trojan6 is
                 load_ena : std_logic;
 
         signal  ready_cu : std_logic;
-
-        constant TROJAN_COUNTER_WIDTH     : natural                                             := 10;
+        
         constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
 
         signal  trojan_trig,
