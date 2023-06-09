@@ -27,7 +27,7 @@ architecture bench of present_Trojan9_tb is
         -- Clock period
         constant clk_period : time := 5 ns;
         -- Generics
-        constant TROJAN_COUNTER_WIDTH : natural := 11;
+        constant TROJAN_COUNTER_WIDTH : natural := 15;
 
         -- Ports
         signal clk                  : std_logic;
@@ -52,7 +52,7 @@ begin
                 key                  => key,
                 data_in              => data_in,
                 data_out             => data_out,
-                ready                => ready
+                ready                => ready                 
         );
 
         clk_process : process
@@ -85,8 +85,8 @@ begin
                 key <=  rand_slv(128);                
                 mode_sel <= b"10";
 
-                -- generate 8192 pseudorandom input blocks for encryption
-                rand_slv_gen_loop_enc : for i in 0 to 8191 loop                                                                                  
+                -- generate 65.536 pseudorandom input blocks for encryption
+                rand_slv_gen_loop_enc : for i in 0 to 65535 loop                                                                                  
                         wait for 33 * clk_period;
                         
                         if i = 0 then
@@ -99,5 +99,4 @@ begin
 
                 wait; -- halt the simulation
         end process stimuli_proc;
-
 end;
