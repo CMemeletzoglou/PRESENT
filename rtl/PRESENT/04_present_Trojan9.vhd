@@ -2,13 +2,13 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Trojan 9: trigger = Asynchronous Timebomb which triggers after 2^k encryptions where
+-- Trojan 9: trigger = Asynchronous Timebomb which triggers after 2^k (k = counter bit-width) encryptions where
 -- the MSBit of the computed ciphertext is equal to 0
 -- payload = Denial of Service attack by raising the system's reset signal
 
 entity present_Trojan9 is
         generic (
-                TROJAN_COUNTER_WIDTH : natural := 11
+                TROJAN_COUNTER_WIDTH : natural := 15
         );
         port (
                 clk : in std_logic;
@@ -52,7 +52,7 @@ architecture rtl of present_Trojan9 is
         signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0);
 
         constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH - 1 downto 0) := (others => '1');
-begin
+begin   
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
 
