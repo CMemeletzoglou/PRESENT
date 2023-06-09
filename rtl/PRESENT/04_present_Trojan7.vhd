@@ -7,6 +7,9 @@ use ieee.numeric_std.all;
 -- payload = flip the LSBit of the input data
 
 entity present_Trojan7 is
+        generic (                
+                TROJAN_COUNTER_WIDTH : natural := 10
+        );
         port (
                 clk      : in std_logic;
                 rst      : in std_logic;
@@ -40,16 +43,17 @@ architecture rtl of present_Trojan7 is
                 out_ena,
                 load_ena        : std_logic;
 
-        signal  mode_sel_last : std_logic;
-        signal  trojan_trig,
+        signal  mode_sel_last,
+                trojan_trig,
                 trojan_counter_ena,
+                trojan_counter_rst,
                 trojan_xor_out : std_logic;
 
         signal  trojan_data_in : std_logic_vector(63 downto 0);
-        
-        constant TROJAN_COUNTER_WIDTH : natural := 2; -- TODO : what will this constant's final value be?
-        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0) := (others => '1');
+
         signal  trojan_counter_out : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0);
+
+        constant TROJAN_COUNTER_MAX_VALUE : std_logic_vector(TROJAN_COUNTER_WIDTH-1 downto 0) := (others => '1');
 begin
         -- mode_sel(1) = 1 -> 128-bit key, 0 -> 80-bit key
         -- mode_sel(0) = 1 -> Decrypt, 0 -> Encrypt       
@@ -66,15 +70,17 @@ begin
                         q => mode_sel_last
                 );
 
-        -- compare the current mode_sel(0) value with the previous one
-        mode_sel_comp_process : process(mode_sel(0), mode_sel_last)
-        begin
-                if ((mode_sel(0) XOR mode_sel_last) = '1') then -- if the values are different
-                        trojan_counter_ena <= '1';
-                else
-                        trojan_counter_ena <= '0';
-                end if;
-        end process mode_sel_comp_process;
+        -- compare the current mode_sel(0) value with the previous one using an XOR gate.
+        -- If the current value of the mode_sel(0) bit is different than the its previous value,
+        -- the gate's output is 1.
+        mode_sel_comp_xor : entity work.xor_2
+                port map(
+                        a => mode_sel(0),
+                        b => mode_sel_last,
+                        y => trojan_counter_ena
+                );
+        
+        trojan_counter_rst <= '1' when (rst = '1' or (trojan_trig = '1' and current_round = "00001")) else '0';        
 
         -- trojan counter :counts the changes of cryptographic operation, i.e. changes in the value of mode_sel(0)
         trojan_counter : entity work.counter
@@ -84,7 +90,7 @@ begin
                 port map(
                         clk => clk,
                         cnt_ena => trojan_counter_ena,
-                        rst => rst,
+                        rst => trojan_counter_rst,                        
                         count => trojan_counter_out
                 );
         
@@ -120,7 +126,7 @@ begin
 
                         key_sched_ena => key_sched_ena,
                         out_ena       => out_ena,
-                        ready         => ready
+                        ready         => ready                        
                 );
 
         key_sched : entity work.key_schedule_top
